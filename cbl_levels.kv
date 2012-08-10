@@ -1,0 +1,68 @@
+#:kivy 1.3.0
+
+
+<CBL_Tile>:
+	size: root.size
+	anim_frame: root.parent.anim_frame if root.is_animated else 1
+	source_image: root.source_image 
+	Image:
+        source: root.source_image if root.source_image != 'atlas://Images/ForestTileSet/tile-water-' else root.source_image + str(root.anim_frame)
+        size: root.size
+        pos: root.pos
+        mipmap: True
+
+<CBL_Level>:
+	self_prop: root
+	cols: 18
+	padding: 0
+	spacing: 0
+	rows: 12
+	anim_frame: root.anim_frame
+
+<CBL_Edit_Level_Screen>:
+	level: current_level.self_prop
+    BoxLayout:
+        orientation: 'vertical'
+        pos: root.x, root.y
+        spacing: root.spacing
+        size: ((root.button_width + root.spacing), (root.height))
+        size_hint: (None, None)
+        Button:
+            text: 'Init Grass'
+            size_hint: (None, None)
+            height: root.button_height
+            width: root.button_width
+            on_release: root.button_callback(*args)
+        Button:
+            text: 'Grass'
+            size_hint: (None, None)
+            height: root.button_height
+            width: root.button_width
+            on_release: root.button_callback(*args)
+        Button:
+            text: 'Dirt'
+            size_hint: (None, None)
+            height: root.button_height
+            width: root.button_width
+            on_release: root.button_callback(*args)
+        Button:
+            text: 'Sand'
+            size_hint: (None, None)
+            height: root.button_height
+            width: root.button_width
+            on_release: root.button_callback(*args)
+        Button:
+            text: 'Water'
+            size_hint: (None, None)
+            height: root.button_height
+            width: root.button_width
+            on_release: root.button_callback(*args)
+
+
+    CBL_Level:
+    	id: current_level
+    	pos: ((root.x + root.button_width + root.spacing), root.y)
+    	size: (1152, 768)
+    	size_hint: (None, None)
+    	parent: root
+    	tiles: []
