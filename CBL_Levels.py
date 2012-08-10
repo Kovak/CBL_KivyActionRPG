@@ -20,7 +20,7 @@ class CBL_Tile(Widget):
 
     def on_touch_down(self, touch):
         if self.collide_point(touch.x, touch.y) and self.parent.parent.current_tile_type != None:
-            if self.parent.parent.current_tile_type == 'atlas://Images/ForestTileSet/tile-water-':
+            if self.parent.parent.current_tile_type == 'atlas://ArtAssets/TileSets/SeaGrass_Forest_Tileset_128/Tile-Water-':
                 self.is_animated = True
                 print 'setting is animated'
             else:
@@ -28,7 +28,7 @@ class CBL_Tile(Widget):
             self.source_image = self.parent.parent.current_tile_type
     def on_touch_move(self, touch):
         if self.collide_point(touch.x, touch.y) and self.parent.parent.current_tile_type != None:
-            if self.parent.parent.current_tile_type == 'atlas://Images/ForestTileSet/tile-water-':
+            if self.parent.parent.current_tile_type == 'atlas://ArtAssets/TileSets/SeaGrass_Forest_Tileset_128/Tile-Water-':
                 self.is_animated = True
                 print 'setting is animated'
             else:
@@ -50,7 +50,7 @@ class CBL_Level(GridLayout):
         print self.tiles
         x_it = 0
         while x_it < self.cols * self.rows:
-            self.tiles.append(CBL_Tile(source_image = 'atlas://Images/ForestTileSet/tile-grass', parent = self.parent))
+            self.tiles.append(CBL_Tile(source_image = 'atlas://ArtAssets/TileSets/SeaGrass_Forest_Tileset_128/Tile-Grass', parent = self.parent))
             x_it += 1
 
     def add_tiles(self):
@@ -73,7 +73,7 @@ class CBL_Edit_Level_Screen(FloatLayout):
     button_height = NumericProperty(80)
     spacing = NumericProperty(10)
     level = ObjectProperty(None)
-    tile_types = ['atlas://Images/ForestTileSet/tile-grass', 'atlas://Images/ForestTileSet/tile-dirt', 'atlas://Images/ForestTileSet/tile-sand', 'atlas://Images/ForestTileSet/tile-water-']
+    tile_types = ['atlas://ArtAssets/TileSets/SeaGrass_Forest_Tileset_128/Tile-Grass', 'atlas://ArtAssets/TileSets/SeaGrass_Forest_Tileset_128/Tile-Dirt', 'atlas://ArtAssets/TileSets/SeaGrass_Forest_Tileset_128/Tile-Sand', 'atlas://ArtAssets/TileSets/SeaGrass_Forest_Tileset_128/Tile-Water-']
     current_tile_type = StringProperty(None)
 
     def on_touch_down(self, touch):
