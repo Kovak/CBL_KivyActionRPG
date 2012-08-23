@@ -8,7 +8,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.image import Image
 from kivy.lang import Builder
 from kivy.uix.scatter import Scatter
-from kivy.properties import AliasProperty, NumericProperty, BooleanProperty, ReferenceListProperty, ObjectProperty, ListProperty, StringProperty
+from kivy.properties import AliasProperty, NumericProperty, BooleanProperty, ReferenceListProperty, ObjectProperty, ListProperty, StringProperty, BoundedNumericProperty
 from kivy.vector import Vector
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
@@ -237,7 +237,8 @@ class CBL_Player_Character(Widget):
         if self.got_collided:
             self.health -= 1
             Clock.schedule_once(self.reset_got_collided, .350)
-
+            print 'health is now: ', self.health
+           
     def reset_got_collided(self, dt):
         self.got_collided = False
 
@@ -258,7 +259,38 @@ class CBL_Player_Character(Widget):
                 each.target_moved = True
             Clock.schedule_once(self.reset_has_moved_counter, .5)
 
+class CBL_Stat_System(Widget):
     
+    earth = BoundedNumericProperty(2, min=0, max=100)
+    wind = BoundedNumericProperty(2, min=0, max=100)
+    fire = BoundedNumericProperty(2, min=0, max=100)
+    water = BoundedNumericProperty(2, min=0, max=100)
+
+    earth_base = NumericProperty(1)
+    earth_armor = NumericProperty(1)
+    earth_multiplier = NumericProperty(2)
+    water_multiplier = NumericProperty(1)
+    armor_value = NumericProperty(1)
+    attack_speed_base = NumericProperty(1)
+    cooldown_base = NumericProperty(1)
+    boot_value = NumericProperty(1)
+    speed_base = NumericProperty(1)
+    weapon_damage_value = NumericProperty(1)
+
+    health = NumericProperty(10)
+    mana = NumericProperty(1)
+    armor = NumericProperty(1)
+    spell_armor = NumericProperty(1)
+    attack_speed = NumericProperty(1)
+    cooldown = NumericProperty(1)
+    speed = NumericProperty(1)
+    attack_damage = NumericProperty(1)
+
+    print 'earth is: ',earth
+    print 'wind is: ',wind
+    print 'fire is: ',fire
+    print 'water is: ',water
+  
 class CBL_GameWorldScreen(Widget):
     activeunit = ObjectProperty(None, allownone = True)
     spritesheets = ListProperty(['atlas://Images/isaac64/', 'atlas://Images/isaac128/', 'atlas://Images/isaac256/'])
@@ -409,6 +441,8 @@ Factory.register('CBL_DebugPanel', CBL_DebugPanel)
 Factory.register('CBL_Collision_Widget', CBL_Collision_Widget)
 Factory.register('CBL_Animated_Sprite', CBL_Animated_Sprite)
 Factory.register('CBL_Player_Touch_Widget', CBL_Player_Touch_Widget)
+Factory.register('CBL_Stat_System', CBL_Stat_System)
+
 
 class Game(Widget):
     def __init__(self):

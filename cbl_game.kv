@@ -68,7 +68,31 @@
         size: root.collision_widget.size
         parent: root
 
+<CBL_Stat_System>:
+    earth: root.earth
+    wind: root.wind
+    fire: root.fire
+    water: root.water
 
+    earth_base: root.earth_base
+    earth_armor: root.earth_armor
+    earth_multiplier: root.earth_multiplier
+    water_multiplier: root.water_multiplier
+    armor_value: root.armor_value
+    attack_speed_base: root.attack_speed_base
+    cooldown_base: root.cooldown_base
+    boot_value: root.boot_value
+    speed_base: root.speed_base
+    weapon_damage_value: root.weapon_damage_value
+
+    health: (self.earth_base + self.earth_armor) * self.earth_multiplier * 100
+    mana: self.water * self.water_multiplier * 100
+    armor: self.armor_value * self.earth
+    spell_armor: self.earth + self.wind + self.fire + self.water
+    attack_speed: (self.wind + self.earth) * self.attack_speed_base
+    cooldown: (self.water + self.fire) * self.cooldown_base
+    speed: (self.boot_value + self.wind) * self.speed_base
+    attack_damage: self.wind + self.fire * 10 + self.weapon_damage_value
 
 <CBL_Projectile_1>:
     collision_widget: collision_widget.self_prop
