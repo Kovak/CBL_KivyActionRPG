@@ -158,9 +158,11 @@ class Screen(GridLayout):
 
                         active_tile.position_code = abs(sum_position)
                 else:
-
-                    active_tile.exterior = old_exterior
-                    active_tile.interior = new_interior
+                    if new_position == 5:
+                        active_tile.interior = active_tile.exterior = new_interior
+                    else:
+                        active_tile.exterior = old_exterior
+                        active_tile.interior = new_interior
                     active_tile.position_code = new_position
 
 
