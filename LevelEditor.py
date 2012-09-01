@@ -12,12 +12,14 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 
 class Tile(Widget):
+    source_image = StringProperty(None)
     atlas = StringProperty(None)
     interior = StringProperty(None,allownone = True)
     exterior = StringProperty(None,allownone = True)
     position_code = StringProperty(None,allownone = True)
     tile_type = StringProperty(None)
     frames = NumericProperty(1)
+    is_animated = BooleanProperty(False)
     parent = ObjectProperty(None)
 
     def __init__(self, atlas, interior, exterior, position_code, frames, parent, gridpos, **kwargs):
@@ -28,22 +30,28 @@ class Tile(Widget):
         self.exterior = exterior
         self.position_code = position_code
         self.frames = frames
-        
-        if exterior == None or exterior == interior:
-            if frames == 1:
-                self.tile_type = 'whole_no_anim'
-            else:
-                self.tile_type = 'whole_anim'
+
+        if frames == 1:
+            self.is_animated = False
         else:
-            if frames == 1:
-                self.tile_type = 'partial_no_anim'
-            else:
-                self.tile_type = 'partial_anim'
+            self.is_animated = True
 
         self.parent = parent
         self.gridpos = gridpos
 
+        self.update_source_text()
+
         super(Tile,self).__init__(**kwargs)
+
+    def test(self,active_frame):
+        return self.source_image + '-' + str(active_frame % self.frames + 1) if self.is_animated else self.source_image
+
+    def update_source_text(self):
+        if self.interior == self.exterior or self.exterior is None:
+            self.source_image = self.atlas + 'Tile-' + self.interior
+        else:
+            self.source_image = self.atlas + 'Tile-' + self.interior + '-' + self.exterior + '-Position' + self.position_code
+
 
     def on_touch_down(self,touch):
         if not self.collide_point(touch.x, touch.y):
@@ -110,16 +118,16 @@ class Screen(GridLayout):
                     active_tile.exterior = None
                     active_tile.position_code = None
                     active_tile.frames = self.tile_frame_dict[new_base_type]
-                    # active_tile.tile_type = 'whole_no_anim' if active_tile.frames == 1 else 'whole_anim'
-                    print 'whole_no_anim' if active_tile.frames == 1 else 'whole_anim'
+                    active_tile.is_animated = False if active_tile.frames == 1 else True
+                    active_tile.update_source_text()
                     
                 else:
                     active_tile.interior = new_base_type
                     active_tile.position_code = str(position_matrix[r][c])
                     active_tile.exterior = old_interior
                     active_tile.frames = max(self.tile_frame_dict[active_tile.exterior],self.tile_frame_dict[active_tile.interior])
-                    # active_tile.tile_type = 'partial_no_anim' if active_tile.frames == 1 else 'partial_anim'
-                    print 'partial_no_anim' if active_tile.frames == 1 else 'partial_anim'
+                    active_tile.is_animated = False if active_tile.frames == 1 else True
+                    active_tile.update_source_text()
 
     def get_surrounding_tiles(self,col,row):
         tiles = [[None,None,None],[None,None,None],[None,None,None]]

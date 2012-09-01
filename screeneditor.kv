@@ -5,7 +5,7 @@
     size: root.size
     source_image: root.source_image
     Image:
-        source: root.atlas + 'Tile-' + (root.interior if root.tile_type == 'whole_no_anim' else (root.interior + '-' + root.exterior + '-Position' + root.position_code if root.tile_type == 'partial_no_anim' else (root.interior + '-' + root.exterior + '-Position' + root.position_code + '-' + str(root.parent.active_frame % root.frames + 1) if root.tile_type == 'partial_anim' else root.interior + '-' + str(root.parent.active_frame % root.frames + 1))))
+        source: root.test(root.parent.active_frame)
         size: root.size
         pos: root.pos
         mipmap: True
