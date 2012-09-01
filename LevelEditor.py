@@ -16,7 +16,7 @@ class Tile(Widget):
     atlas = StringProperty(None)
     interior = StringProperty(None,allownone = True)
     exterior = StringProperty(None,allownone = True)
-    position_code = StringProperty(None,allownone = True)
+    position_code = NumericProperty(None)
     tile_type = StringProperty(None)
     frames = NumericProperty(1)
     is_animated = BooleanProperty(False)
@@ -50,8 +50,16 @@ class Tile(Widget):
         if self.interior == self.exterior or self.exterior is None:
             self.source_image = self.atlas + 'Tile-' + self.interior
         else:
-            self.source_image = self.atlas + 'Tile-' + self.interior + '-' + self.exterior + '-Position' + self.position_code
+            self.source_image = self.atlas + 'Tile-' + self.interior + '-' + self.exterior + '-Position' + str(int(self.position_code))
 
+    def on_touch_down(self,touch):
+        if not self.collide_point(touch.x, touch.y):
+            return False
+        
+        # get new tile characteristics from parent class, which is aware of surrounding tiles.
+        # self.atlas, self.interior, self.position_code, self.exterior, self.frames = self.parent.get_new_tiles(self)
+        self.parent.get_new_tiles(self)
+        return True
 
     def on_touch_move(self,touch):
         if not self.collide_point(touch.x, touch.y):
@@ -63,8 +71,8 @@ class Tile(Widget):
         return True
 
 class Screen(GridLayout):
-    rows = NumericProperty(12)
-    cols = NumericProperty(18)
+    rows = NumericProperty(6)
+    cols = NumericProperty(9)
     tiles = ObjectProperty(None)
     active_frame = NumericProperty(0)
 
@@ -78,7 +86,7 @@ class Screen(GridLayout):
         super(Screen,self).__init__(**kwargs)
 
         #start the animation counter
-        Clock.schedule_interval(self.increment_active_frame, .25)
+        Clock.schedule_interval(self.increment_active_frame, 1.0)
         
         #fill must always be provided until there is a load system
         assert fill is not None
@@ -86,8 +94,8 @@ class Screen(GridLayout):
         if fill is not None:
             self.tiles = [Tile(self.atlas,
                 fill,
-                None,
-                None,
+                fill,
+                5,
                 self.tile_frame_dict[fill],
                 self,
                 (i,j),
@@ -102,13 +110,23 @@ class Screen(GridLayout):
         self.active_frame += 1
 
     def get_new_tiles(self,tile):
-        print "current position:", tile.gridpos
         new_base_type = self.parent.current_tile_type
 
-        print "new tile will have base type", new_base_type
         all_surrounding_tiles = self.get_surrounding_tiles(*tile.gridpos)
 
         position_matrix = [[7,8,9],[4,5,6],[1,2,3]]
+        position_addition_table = [
+        [1,2,2,4,5,-7,4,-3,5],
+        [2,2,2,-9,5,-7,-9,5,-7],
+        [2,2,3,-9,5,6,5,-1,6],
+        [4,-9,-9,4,5,5,4,-3,-3],
+        [5,5,5,5,5,5,5,5,5],
+        [-7,-7,6,5,5,6,-1,-1,6],
+        [4,-7,5,4,5,-1,7,8,8],
+        [-3,5,-1,-3,5,-1,8,8,8],
+        [5,-7,6,-3,5,6,8,8,9]
+        ]
+
         for r,row in enumerate(position_matrix):
             for c,position_code in enumerate(row):
                 active_tile = all_surrounding_tiles[r][c]
@@ -116,34 +134,40 @@ class Screen(GridLayout):
                 if active_tile is None:
                     continue
 
-                elif position_matrix[r][c] == 5:
-                    active_tile.interior = new_base_type
-                    active_tile.exterior = None
-                    active_tile.position_code = None
-                    active_tile.frames = self.tile_frame_dict[new_base_type]
-                    active_tile.is_animated = False if active_tile.frames == 1 else True
-                    active_tile.update_source_text()
+                old_interior = active_tile.interior
+                old_exterior = active_tile.exterior
+                new_interior = new_base_type
+                old_position = active_tile.position_code
+                new_position = position_code
 
-                elif active_tile.interior == active_tile.exterior or active_tile.exterior is None:
-                    old_interior = active_tile.interior
-                    active_tile.interior = new_base_type
-                    active_tile.position_code = str(position_matrix[r][c])
-                    active_tile.exterior = old_interior
-                    active_tile.frames = max(self.tile_frame_dict[active_tile.exterior],self.tile_frame_dict[active_tile.interior])
-                    active_tile.is_animated = False if active_tile.frames == 1 else True
-                    active_tile.update_source_text()
+                if old_interior == new_interior:
 
-                elif active_tile.interior == new_base_type:
-                    active_tile.position_code = str(position_matrix[r][c])
-                    active_tile.update_source_text()
+                    sum_position = position_addition_table[old_position-1][new_position-1]
+                    if sum_position == 5:
+                        active_tile.interior = active_tile.exterior = new_interior
+                        active_tile.position_code = 5
+                    else:
+
+                        if sum_position < 0:
+                            active_tile.interior = old_exterior
+                            active_tile.exterior = new_interior
+                        else:
+                            active_tile.interior = new_interior
+                            # unnecessary but just to show what's going on
+                            # active_tile.exterior = old_exterior
+
+                        active_tile.position_code = abs(sum_position)
+                else:
+
+                    active_tile.exterior = old_exterior
+                    active_tile.interior = new_interior
+                    active_tile.position_code = new_position
 
 
-                elif active_tile.exterior == new_base_type:
-                    active_tile.interior = active_tile.exterior
-                    active_tile.position_code = str(position_matrix[r][c])
-                    active_tile.frames = max(self.tile_frame_dict[active_tile.exterior],self.tile_frame_dict[active_tile.interior])
-                    active_tile.is_animated = False if active_tile.frames == 1 else True
-                    active_tile.update_source_text()
+                active_tile.frames = max(self.tile_frame_dict[active_tile.exterior],self.tile_frame_dict[active_tile.interior])
+                active_tile.is_animated = False if active_tile.frames == 1 else True
+                active_tile.update_source_text()
+
 
     def get_surrounding_tiles(self,col,row):
         tiles = [[None,None,None],[None,None,None],[None,None,None]]
