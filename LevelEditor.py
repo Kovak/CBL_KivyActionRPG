@@ -78,7 +78,7 @@ class Screen(GridLayout):
         super(Screen,self).__init__(**kwargs)
 
         #start the animation counter
-        Clock.schedule_interval(self.increment_active_frame, 0.5)
+        Clock.schedule_interval(self.increment_active_frame, .25)
         
         #fill must always be provided until there is a load system
         assert fill is not None
@@ -112,19 +112,35 @@ class Screen(GridLayout):
         for r,row in enumerate(position_matrix):
             for c,position_code in enumerate(row):
                 active_tile = all_surrounding_tiles[r][c]
-                old_interior = active_tile.interior
-                if position_matrix[r][c] == 5:
+
+                if active_tile is None:
+                    continue
+
+                elif position_matrix[r][c] == 5:
                     active_tile.interior = new_base_type
                     active_tile.exterior = None
                     active_tile.position_code = None
                     active_tile.frames = self.tile_frame_dict[new_base_type]
                     active_tile.is_animated = False if active_tile.frames == 1 else True
                     active_tile.update_source_text()
-                    
-                else:
+
+                elif active_tile.interior == active_tile.exterior or active_tile.exterior is None:
+                    old_interior = active_tile.interior
                     active_tile.interior = new_base_type
                     active_tile.position_code = str(position_matrix[r][c])
                     active_tile.exterior = old_interior
+                    active_tile.frames = max(self.tile_frame_dict[active_tile.exterior],self.tile_frame_dict[active_tile.interior])
+                    active_tile.is_animated = False if active_tile.frames == 1 else True
+                    active_tile.update_source_text()
+
+                elif active_tile.interior == new_base_type:
+                    active_tile.position_code = str(position_matrix[r][c])
+                    active_tile.update_source_text()
+
+
+                elif active_tile.exterior == new_base_type:
+                    active_tile.interior = active_tile.exterior
+                    active_tile.position_code = str(position_matrix[r][c])
                     active_tile.frames = max(self.tile_frame_dict[active_tile.exterior],self.tile_frame_dict[active_tile.interior])
                     active_tile.is_animated = False if active_tile.frames == 1 else True
                     active_tile.update_source_text()
@@ -162,7 +178,7 @@ class ScreenEditor(FloatLayout):
         self.draw_buttons(tile_names)
 
         self.screen = Screen(self,
-            fill=tile_names[2],
+            fill=tile_names[0],
             x = self.x + self.button_width + 2*self.spacing,
             y = self.y + self.spacing,
             width = self.width - self.button_width - 3*self.spacing,
