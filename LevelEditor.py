@@ -53,7 +53,7 @@ class Tile(Widget):
             self.source_image = self.atlas + 'Tile-' + self.interior + '-' + self.exterior + '-Position' + self.position_code
 
 
-    def on_touch_down(self,touch):
+    def on_touch_move(self,touch):
         if not self.collide_point(touch.x, touch.y):
             return False
         
@@ -178,7 +178,7 @@ class ScreenEditor(FloatLayout):
         self.draw_buttons(tile_names)
 
         self.screen = Screen(self,
-            fill=tile_names[0],
+            fill=tile_names[2],
             x = self.x + self.button_width + 2*self.spacing,
             y = self.y + self.spacing,
             width = self.width - self.button_width - 3*self.spacing,
