@@ -140,9 +140,19 @@ class Screen(GridLayout):
                 old_position = active_tile.position_code
                 new_position = position_code
 
+                # if it's an "inverse" tile, change it back to a normal tile before processing
+
+                # if old_exterior == new_interior and old_interior != new_interior:
+                #     active_tile.exterior = active_tile.interior = old_exterior = old_interior
+                #     active_tile.position_code = old_position = 5
+                #     print "Caught one!"
+
+
+
                 if old_interior == new_interior:
 
                     sum_position = position_addition_table[old_position-1][new_position-1]
+
                     if sum_position == 5:
                         active_tile.interior = active_tile.exterior = new_interior
                         active_tile.position_code = 5
@@ -204,7 +214,7 @@ class ScreenEditor(FloatLayout):
         self.draw_buttons(tile_names)
 
         self.screen = Screen(self,
-            fill=tile_names[2],
+            fill=tile_names[0],
             x = self.x + self.button_width + 2*self.spacing,
             y = self.y + self.spacing,
             width = self.width - self.button_width - 3*self.spacing,
@@ -240,8 +250,6 @@ class ScreenEditor(FloatLayout):
 
         if instance.text in self.tile_names:
             self.current_tile_type = instance.text
-            print "Changing active tile to %s" % (instance.text,)
-
 
 class ScreenEditorWidget(Widget):
     def __init__(self):
