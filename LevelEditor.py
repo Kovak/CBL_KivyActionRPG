@@ -11,7 +11,95 @@ from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.factory import Factory
 
+class BGMaterial():
+    def __init__(self,atlas,material_name,frames):
+        self.atlas = atlas
+        self.material_name = material_name
+        self.frames = frames
+
 class Tile(Widget):
+    parent = ObjectProperty(None)
+
+    def __init__(self,basetype,posarray=None,**kwargs):
+        if posarray is None:
+            self.posarray = [[True,True],[True,True]]
+        else:
+            self.posarray = posarray
+
+        self.basetype = basetype
+        self.update_source_image()
+
+        super(Tile,self).__init__(**kwargs)
+
+    def get_current_frame(self,framecounter):
+        return self.source_image + '-' + str(framecounter % self.basetype.frames + 1) if self.basetype.frames > 1 else self.source_image
+
+    def update_source_image(self):
+        # sorry this is ugly guys, but it works, it's fast, and it's pretty clear what's going on.
+        if self.posarray == [[True,True],[True,True]]:
+            position = None
+            orientation = None
+        elif self.posarray == [[True,False],[False,False]]:
+            position = "3"
+            orientation = 'Interior'
+        elif self.posarray == [[False,True],[False,False]]:
+            position = "1"
+            orientation = 'Interior'
+        elif self.posarray == [[False,False],[True,False]]:
+            position = "9"
+            orientation = 'Interior'
+        elif self.posarray == [[False,False],[False,True]]:
+            position = "7"
+            orientation = 'Interior'
+        elif self.posarray == [[True,True],[False,False]]:
+            position = "2"
+            orientation = 'Interior'
+        elif self.posarray == [[False,False],[True,True]]:
+            position = "8"
+            orientation = 'Interior'
+        elif self.posarray == [[True,False],[True,False]]:
+            position = "6"
+            orientation = 'Interior'
+        elif self.posarray == [[False,True],[False,True]]:
+            position = "4"
+            orientation = 'Interior'
+        elif self.posarray == [[False,True],[True,True]]:
+            position = "3"
+            orientation = 'Exterior'
+        elif self.posarray == [[True,False],[True,True]]:
+            position = "1"
+            orientation = 'Exterior'
+        elif self.posarray == [[True,True],[False,True]]:
+            position = "9"
+            orientation = 'Exterior'
+        elif self.posarray == [[True,True],[True,False]]:
+            position = "7"
+            orientation = 'Exterior'
+        
+        if position is None:
+            self.source_image = self.basetype.atlas + 'Tile-' + self.basetype.material_name
+        else:
+            self.source_image = self.basetype.atlas + 'Tile-' + self.basetype.material_name + '-Position' + position + '-' + orientation
+
+class CompositeTile(Widget):
+    """This class is not being used right now. It fucked everything up with the positions. Instead, the Screen Object is going to contain an array of lists of Tile objects."""
+    active_frame = NumericProperty(0)
+
+    def __init__(self,basetypes,posarrays = None,**kwargs):
+        if posarrays is None:
+            posarrays = [None for b in basetypes]
+
+        super(CompositeTile,self).__init__(**kwargs)
+
+        for idx,basetype in enumerate(basetypes):
+            t = Tile(basetype,posarray = posarrays[idx],parent=self,size=self.size,size_hint=(None,None))
+            self.add_widget(t)
+
+
+
+
+
+class OldTile(Widget):
     source_image = StringProperty(None)
     atlas = StringProperty(None)
     interior = StringProperty(None,allownone = True)
@@ -41,7 +129,7 @@ class Tile(Widget):
 
         self.update_source_text()
 
-        super(Tile,self).__init__(**kwargs)
+        super(OldTile,self).__init__(**kwargs)
 
     def test(self,active_frame):
         return self.source_image + '-' + str(active_frame % self.frames + 1) if self.is_animated else self.source_image
@@ -70,7 +158,7 @@ class Tile(Widget):
         self.parent.get_new_tiles(self)
         return True
 
-class Screen(GridLayout):
+class Screen(FloatLayout):
     rows = NumericProperty(6)
     cols = NumericProperty(9)
     tiles = ObjectProperty(None)
@@ -83,7 +171,17 @@ class Screen(GridLayout):
         self.tile_names = parent.tile_names
         self.tile_frame_dict = parent.tile_frame_dict
 
+        
+
+
         super(Screen,self).__init__(**kwargs)
+
+        ###This is super fucked up because width appears to be 1, even though it explicitly gets set to the right value. Looks like we need schedule_once to fix this; but I don't know why we didn't need it when using a GridLayout
+        self.tile_width = self.width/self.cols
+
+        ### it works fine if you set it to a constant afterward.
+        self.tile_width = 75
+        print "tile width", self.pos, self.size
 
         #start the animation counter
         Clock.schedule_interval(self.increment_active_frame, 1.0)
@@ -91,19 +189,23 @@ class Screen(GridLayout):
         #fill must always be provided until there is a load system
         assert fill is not None
 
+        grass = BGMaterial(parent.atlas,'Grass',1)
+        sand = BGMaterial(parent.atlas,'Sand',1)
+
         if fill is not None:
-            self.tiles = [Tile(self.atlas,
-                fill,
-                fill,
-                5,
-                self.tile_frame_dict[fill],
-                self,
-                (i,j),
-                size=(self.width/self.cols,self.width/self.cols),
-                size_hint=(None,None),
-                ) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
-            for tile in self.tiles:
-                self.add_widget(tile)
+            # self.tiles = [Tile(self.atlas,
+            #     fill,
+            #     fill,
+            #     5,
+            #     self.tile_frame_dict[fill],
+            #     self,
+            #     (i,j),
+            #     size=(self.width/self.cols,self.width/self.cols),
+            #     size_hint=(None,None),
+            #     ) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
+            self.tiles = [Tile(grass,parent=self,size=(self.tile_width,self.tile_width), x = self.x + self.tile_width*j,y=self.y+self.tile_width*i,size_hint = (None,None)) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
+            for ctile in self.tiles:
+                self.add_widget(ctile)
 
 
     def increment_active_frame(self, dt):
@@ -223,6 +325,7 @@ class ScreenEditor(FloatLayout):
             padding = 0,
             )
 
+
         self.add_widget(self.screen)
 
 
@@ -255,7 +358,7 @@ class ScreenEditorWidget(Widget):
     def __init__(self):
         super(ScreenEditorWidget,self).__init__()
         mainwidget = ScreenEditor(
-            'atlas://ArtAssets/TileSets/SeaGrass_Forest_Tileset_128/',
+            'atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/',
             ['Grass','Sand','Water','Dirt'], 
             {'Grass': 1,'Sand': 1,'Water': 4, 'Dirt': 1},
             pos = (0, 0), 
