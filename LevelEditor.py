@@ -21,6 +21,8 @@ class Subtile():
 
 
 class Tile(Widget):
+    layers = NumericProperty(0)
+
     def __init__(self,typelist,gridpos=None,**kwargs):
         self.typelist = typelist
         self.gridpos = gridpos
@@ -100,6 +102,7 @@ class Tile(Widget):
     def get_current_frame(self,layer,framecounter):
         return self.source_images[layer] + '-' + str(framecounter % self.typelist[layer].frames + 1) if self.typelist[layer].frames > 1 else self.source_images[layer]
 
+
     def add_segment(self,tile_type):
         try:
             existing_subtile_idx = [x.material_name for x in self.typelist].index(tile_type.material_name)
@@ -119,7 +122,7 @@ class Tile(Widget):
             self.typelist[existing_subtile_idx].position = new_position
 
             # now send to top
-            self.typelist[existing_subtile_idx], self.typelist[-1] = self.typelist[-1], self.typelist[existing_subtile_idx]
+            # self.typelist[existing_subtile_idx], self.typelist[-1] = self.typelist[-1], self.typelist[existing_subtile_idx]
         else:
             print "This is tile",self.gridpos
             print "Adding subtile", tile_type.material_name, "at position",tile_type.position
@@ -127,7 +130,6 @@ class Tile(Widget):
 
         self.update_source_images()
         print "layers:",self.layers
-        time.sleep(.2)
 
 
 
@@ -303,7 +305,7 @@ class Screen(FloatLayout):
             #     size=(self.width/self.cols,self.width/self.cols),
             #     size_hint=(None,None),
             #     ) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
-            self.tiles = [Tile([self.tileset[0]],parent=self,size=(self.tile_width,self.tile_width), x = self.x + self.tile_width*j,y=self.y+self.tile_width*i,size_hint = (None,None),gridpos = (i,j)) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
+            self.tiles = [Tile([self.tileset[2]],parent=self,size=(self.tile_width,self.tile_width), x = self.x + self.tile_width*j,y=self.y+self.tile_width*i,size_hint = (None,None),gridpos = (i,j)) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
             for ctile in self.tiles:
                 self.add_widget(ctile)
 
@@ -316,9 +318,9 @@ class Screen(FloatLayout):
         all_surrounding_tiles = self.get_surrounding_tiles(*tile.gridpos)
 
         position_matrix = [
-            [[[False,False],[False,True]],[[False,False],[True,True]],[[False,False],[True,False]]],
+            [[[False,True],[False,False]],[[True,True],[False,False]],[[True,False],[False,False]]],
             [[[False,True],[False,True]],[[True,True],[True,True]],[[True,False],[True,False]]],
-            [[[False,True],[False,False]],[[True,True],[False,False]],[[True,False],[False,False]]]]
+            [[[False,False],[False,True]],[[False,False],[True,True]],[[False,False],[True,False]]]]
 
         for r,row in enumerate(position_matrix):
             for c,position in enumerate(row):

@@ -3,14 +3,15 @@
 
 <Tile>:
     size: root.size
+
     Image:
         source: root.get_current_frame(0,root.parent.active_frame)
         size: root.size
         pos: root.pos
         mipmap: True
+
     Image:
         source: root.get_current_frame(1,root.parent.active_frame) if root.layers > 1 else None
         size: root.size if root.layers > 1 else (0,0)
         pos: root.pos
         mipmap: True
-
