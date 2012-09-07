@@ -32,6 +32,7 @@ class Tile(Widget):
         self.gridpos = gridpos
         self.layers = len(typelist)
         self.source_images = []
+        self.source_frames = []
         self.update_source_images()
 
         super(Tile,self).__init__(**kwargs)
@@ -105,8 +106,10 @@ class Tile(Widget):
 
             try:
                 self.source_images[idx] = new_source_image
+                self.source_frames[idx] = t.frames
             except IndexError:
                 self.source_images.append(new_source_image)
+                self.source_frames.append(t.frames)
 
             self.update_now = not self.update_now
             print "source images updated to", self.source_images
@@ -115,7 +118,7 @@ class Tile(Widget):
 
     def get_current_frame(self,layer,framecounter):
         try:
-            return self.source_images[layer] + '-' + str(framecounter % self.typelist[layer].frames + 1) if self.typelist[layer].frames > 1 else self.source_images[layer]
+            return self.source_images[layer] + '-' + str(framecounter % self.source_frames[layer] + 1) if self.source_frames[layer] > 1 else self.source_images[layer]
         except:
             return ""
 
