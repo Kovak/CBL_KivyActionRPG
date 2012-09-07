@@ -19,9 +19,13 @@ class Subtile():
         self.position = [[True,True],[True,True]] if position is None else position
         self.frames = frames
 
+    def __str__(self):
+        return self.material_name + ': ' + str(self.position)
+
 
 class Tile(Widget):
     layers = NumericProperty(0)
+    update_now = BooleanProperty(False)
 
     def __init__(self,typelist,gridpos=None,**kwargs):
         self.typelist = typelist
@@ -33,6 +37,15 @@ class Tile(Widget):
         super(Tile,self).__init__(**kwargs)
 
     def on_touch_down(self,touch):
+        if not self.collide_point(touch.x, touch.y):
+            return False
+
+        # get new tile characteristics from parent class, which is aware of surrounding tiles.
+        # self.atlas, self.interior, self.position_code, self.exterior, self.frames = self.parent.tile_touch(self)
+        self.parent.tile_touch(self)
+        return True
+
+    def on_touch_move(self,touch):
         if not self.collide_point(touch.x, touch.y):
             return False
 
@@ -95,13 +108,16 @@ class Tile(Widget):
             except IndexError:
                 self.source_images.append(new_source_image)
 
+            self.update_now = not self.update_now
             print "source images updated to", self.source_images
 
         self.layers = len(self.typelist)
 
     def get_current_frame(self,layer,framecounter):
-        return self.source_images[layer] + '-' + str(framecounter % self.typelist[layer].frames + 1) if self.typelist[layer].frames > 1 else self.source_images[layer]
-
+        try:
+            return self.source_images[layer] + '-' + str(framecounter % self.typelist[layer].frames + 1) if self.typelist[layer].frames > 1 else self.source_images[layer]
+        except:
+            return ""
 
     def add_segment(self,tile_type):
         try:
@@ -122,11 +138,16 @@ class Tile(Widget):
             self.typelist[existing_subtile_idx].position = new_position
 
             # now send to top
-            # self.typelist[existing_subtile_idx], self.typelist[-1] = self.typelist[-1], self.typelist[existing_subtile_idx]
+            self.typelist[existing_subtile_idx], self.typelist[-1] = self.typelist[-1], self.typelist[existing_subtile_idx]
         else:
             print "This is tile",self.gridpos
             print "Adding subtile", tile_type.material_name, "at position",tile_type.position
             self.typelist.append(tile_type)
+
+        # if the top of the typelist is a full tile, remove the stuff under it
+        if self.typelist[-1].position == [[True, True],[True,True]]:
+            print "adjusting typelist: old is",self.typelist
+            self.typelist = [self.typelist[-1]]
 
         self.update_source_images()
         print "layers:",self.layers
@@ -305,7 +326,7 @@ class Screen(FloatLayout):
             #     size=(self.width/self.cols,self.width/self.cols),
             #     size_hint=(None,None),
             #     ) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
-            self.tiles = [Tile([self.tileset[2]],parent=self,size=(self.tile_width,self.tile_width), x = self.x + self.tile_width*j,y=self.y+self.tile_width*i,size_hint = (None,None),gridpos = (i,j)) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
+            self.tiles = [Tile([self.tileset[0]],parent=self,size=(self.tile_width,self.tile_width), x = self.x + self.tile_width*j,y=self.y+self.tile_width*i,size_hint = (None,None),gridpos = (i,j)) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
             for ctile in self.tiles:
                 self.add_widget(ctile)
 

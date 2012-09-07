@@ -5,13 +5,13 @@
     size: root.size
 
     Image:
-        source: root.get_current_frame(0,root.parent.active_frame)
+        source: root.get_current_frame(0,root.parent.active_frame) + ("" if root.update_now else "")
         size: root.size
         pos: root.pos
         mipmap: True
 
     Image:
-        source: root.get_current_frame(1,root.parent.active_frame) if root.layers > 1 else None
+        source: root.get_current_frame(1,root.parent.active_frame) + ("" if root.update_now else "") if root.layers > 1 else ""
         size: root.size if root.layers > 1 else (0,0)
         pos: root.pos
         mipmap: True
