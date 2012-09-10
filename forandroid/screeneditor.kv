@@ -1,0 +1,29 @@
+#:kivy 1.3.0
+
+
+<Tile>:
+    size: root.size
+
+    Image:
+        source: root.get_current_frame(0,root.parent.active_frame) + ("" if root.update_now else "")
+        size: root.size
+        pos: root.pos
+        mipmap: True
+
+    Image:
+        source: root.get_current_frame(1,root.parent.active_frame) + ("" if root.update_now else "") if root.layers > 1 else ""
+        size: root.size if root.layers > 1 else (0,0)
+        pos: root.pos
+        mipmap: True
+
+    Image:
+        source: root.get_current_frame(2,root.parent.active_frame) + ("" if root.update_now else "") if root.layers > 2 else ""
+        size: root.size if root.layers > 2 else (0,0)
+        pos: root.pos
+        mipmap: True
+
+    Image:
+        source: root.get_current_frame(3,root.parent.active_frame) + ("" if root.update_now else "") if root.layers > 3 else ""
+        size: root.size if root.layers > 3 else (0,0)
+        pos: root.pos
+        mipmap: True
