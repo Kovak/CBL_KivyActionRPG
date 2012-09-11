@@ -4,6 +4,7 @@ from kivy.properties import NumericProperty, BooleanProperty, ListProperty, Stri
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.atlas import Atlas
 from kivy.app import App
@@ -12,12 +13,38 @@ from kivy.clock import Clock
 from kivy.factory import Factory
 import time
 
+class WorldObject(Widget):
+    def __init__(self,atlas,name,frames):
+        self.atlas = atlas
+        self.name = name
+        self.frames = frames
+
+        try:
+            self.icon = Atlas(atlas)[name]
+            self.icon_str = str('atlas://' + atlas + '/'+ name)
+        except KeyError:
+            self.icon = Atlas(atlas)[name + "-1"]
+            self.icon_str = str('atlas://' + atlas + '/'+ name + '-1')
+
+    def __str__(self):
+        return self.name
+
 class Subtile():
     def __init__(self,atlas,material_name,position,frames):
         self.atlas = atlas
         self.material_name = material_name
         self.position = [[True,True],[True,True]] if position is None else position
         self.frames = frames
+
+        # Caution: this parses the atlas URL and may or may not be compatible with windows. I do not know. This code ought to be refactored to be the same as WorldObject anyway
+        atlas_stripped = atlas[8:].rpartition('/')[0]+'.atlas'
+
+        try:
+            self.icon = Atlas(atlas_stripped)['Tile-' + material_name]
+            self.icon_str = str(atlas + 'Tile-' + material_name)
+        except KeyError:
+            self.icon = Atlas(atlas_stripped)['Tile-' + material_name + "-1"]
+            self.icon_str = str(atlas + 'Tile-' + material_name + '-1')        
 
     def __str__(self):
         return self.material_name + ': ' + str(self.position)
@@ -112,7 +139,6 @@ class Tile(Widget):
                 self.source_frames.append(t.frames)
 
             self.update_now = not self.update_now
-            print "source images updated to", self.source_images
 
         self.layers = len(self.typelist)
 
@@ -155,135 +181,6 @@ class Tile(Widget):
         self.update_source_images()
         print "layers:",self.layers
 
-
-
-
-class AnotherOldTile(Widget):
-    parent = ObjectProperty(None)
-
-    def __init__(self,basetype,posarray=None,**kwargs):
-        if posarray is None:
-            self.posarray = [[True,True],[True,True]]
-        else:
-            self.posarray = posarray
-
-        self.basetype = basetype
-        self.update_source_image()
-
-        super(Tile,self).__init__(**kwargs)
-
-    def get_current_frame(self,framecounter):
-        return self.source_image + '-' + str(framecounter % self.basetype.frames + 1) if self.basetype.frames > 1 else self.source_image
-
-    def update_source_image(self):
-        # sorry this is ugly guys, but it works, it's fast, and it's pretty clear what's going on.
-        if self.posarray == [[True,True],[True,True]]:
-            position = None
-            orientation = None
-        elif self.posarray == [[True,False],[False,False]]:
-            position = "3"
-            orientation = 'Interior'
-        elif self.posarray == [[False,True],[False,False]]:
-            position = "1"
-            orientation = 'Interior'
-        elif self.posarray == [[False,False],[True,False]]:
-            position = "9"
-            orientation = 'Interior'
-        elif self.posarray == [[False,False],[False,True]]:
-            position = "7"
-            orientation = 'Interior'
-        elif self.posarray == [[True,True],[False,False]]:
-            position = "2"
-            orientation = 'Interior'
-        elif self.posarray == [[False,False],[True,True]]:
-            position = "8"
-            orientation = 'Interior'
-        elif self.posarray == [[True,False],[True,False]]:
-            position = "6"
-            orientation = 'Interior'
-        elif self.posarray == [[False,True],[False,True]]:
-            position = "4"
-            orientation = 'Interior'
-        elif self.posarray == [[False,True],[True,True]]:
-            position = "3"
-            orientation = 'Exterior'
-        elif self.posarray == [[True,False],[True,True]]:
-            position = "1"
-            orientation = 'Exterior'
-        elif self.posarray == [[True,True],[False,True]]:
-            position = "9"
-            orientation = 'Exterior'
-        elif self.posarray == [[True,True],[True,False]]:
-            position = "7"
-            orientation = 'Exterior'
-        
-        if position is None:
-            self.source_image = self.basetype.atlas + 'Tile-' + self.basetype.material_name
-        else:
-            self.source_image = self.basetype.atlas + 'Tile-' + self.basetype.material_name + '-Position' + position + '-' + orientation
-
-
-
-
-
-class OldTile(Widget):
-    source_image = StringProperty(None)
-    atlas = StringProperty(None)
-    interior = StringProperty(None,allownone = True)
-    exterior = StringProperty(None,allownone = True)
-    position_code = NumericProperty(None)
-    tile_type = StringProperty(None)
-    frames = NumericProperty(1)
-    is_animated = BooleanProperty(False)
-    parent = ObjectProperty(None)
-
-    def __init__(self, atlas, interior, exterior, position_code, frames, parent, gridpos, **kwargs):
-        
-        # guys is this actually necessary? i've been doing it in all my python code since I learned python a year ago, but I feel like there's gotta be a better way.
-        self.atlas = atlas
-        self.interior = interior
-        self.exterior = exterior
-        self.position_code = position_code
-        self.frames = frames
-
-        if frames == 1:
-            self.is_animated = False
-        else:
-            self.is_animated = True
-
-        self.parent = parent
-        self.gridpos = gridpos
-
-        self.update_source_text()
-
-        super(OldTile,self).__init__(**kwargs)
-
-    def test(self,active_frame):
-        return self.source_image + '-' + str(active_frame % self.frames + 1) if self.is_animated else self.source_image
-
-    def update_source_text(self):
-        if self.interior == self.exterior or self.exterior is None:
-            self.source_image = self.atlas + 'Tile-' + self.interior
-        else:
-            self.source_image = self.atlas + 'Tile-' + self.interior + '-' + self.exterior + '-Position' + str(int(self.position_code))
-
-    def on_touch_down(self,touch):
-        if not self.collide_point(touch.x, touch.y):
-            return False
-        
-        # get new tile characteristics from parent class, which is aware of surrounding tiles.
-        # self.atlas, self.interior, self.position_code, self.exterior, self.frames = self.parent.tile_touch(self)
-        self.parent.tile_touch(self)
-        return True
-
-    def on_touch_move(self,touch):
-        if not self.collide_point(touch.x, touch.y):
-            return False
-        
-        # get new tile characteristics from parent class, which is aware of surrounding tiles.
-        # self.atlas, self.interior, self.position_code, self.exterior, self.frames = self.parent.tile_touch(self)
-        self.parent.tile_touch(self)
-        return True
 
 class Screen(FloatLayout):
     rows = NumericProperty(6)
@@ -446,13 +343,13 @@ class ScreenEditor(FloatLayout):
     spacing = NumericProperty(10)
     level = ObjectProperty(None)
 
-    def __init__(self, tileset, **kwargs):
+    def __init__(self, tileset, objectset, **kwargs):
         self.tileset = tileset
         self.current_tile_type = self.tileset[0]
 
         super(ScreenEditor,self).__init__(**kwargs)
         
-        self.draw_buttons([x.material_name for x in self.tileset])
+        self.draw_buttons(tileset,objectset)
 
         self.screen = Screen(
             self.tileset,
@@ -470,30 +367,35 @@ class ScreenEditor(FloatLayout):
         self.add_widget(self.screen)
 
 
-    def draw_buttons(self,buttons):
+    def draw_buttons(self,buttons,objects):
 
         bl = BoxLayout(
             orientation = 'vertical',
-            x = self.x + self.spacing,
-            y = self.top - len(buttons)*(self.spacing + self.button_height) - self.spacing, 
             spacing = self.spacing,
-            size_hint = (None,None), 
-            height = len(buttons)*(self.spacing + self.button_height) + self.spacing,
-            width = self.button_width + 2*self.spacing,
+            size_hint_y = None, 
+            height = len(buttons+objects)*(self.spacing + self.button_height) + self.spacing,
             )
 
 
-        for button in buttons:
-            b = Button(text=button, size_hint = (None, None), width=self.button_width, height = self.button_height)
+        for t in buttons:
+            b = Button(text="", id = t.material_name, background_normal = t.icon_str, background_down = t.icon_str, size_hint_y = None, height = self.button_height)
             b.bind(on_release = self.button_callback)
             bl.add_widget(b)
 
-        self.add_widget(bl)
+        for o in objects:
+            b = Button(text="", id = o.name, background_down = o.icon_str, background_normal = o.icon_str, size_hint_y = None, height = self.button_height)
+            b.bind(on_release = self.button_callback)
+            bl.add_widget(b)
+
+        sv = ScrollView(size_hint = (None, None), width=self.button_width, height = self.height, x = self.x + self.spacing,
+            y = self.y + self.spacing)
+        sv.add_widget(bl)
+        self.add_widget(sv)
 
     def button_callback(self, instance):
 
-        if instance.text in [x.material_name for x in self.tileset]:
-            self.current_tile_type = self.tileset[[x.material_name for x in self.tileset].index(instance.text)]
+        if instance.id in [x.material_name for x in self.tileset]:
+            self.current_tile_type = self.tileset[[x.material_name for x in self.tileset].index(instance.id)]
 
 class ScreenEditorWidget(Widget):
     def __init__(self):
@@ -504,12 +406,38 @@ class ScreenEditorWidget(Widget):
             Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Water',None,4),
             Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Dirt',None,1)]
 
+        atlas='ArtAssets/WorldObjects/WorldObjects-SeaGrass_Forest-Set1_128.atlas'
+        objects = self.get_world_objects(atlas)
+
         mainwidget = ScreenEditor(
             tileset,
+            objects,
             pos = (0, 0), 
             size = (Window.width, Window.height))
 
         self.add_widget(mainwidget)
+
+    def get_world_objects(self,atlas):
+        '''Reads all world objects from supplied atlas. Returns a list of WorldObjects'''
+        # split all keys into tile groups (i.e., make xx-1 xx-2 xx-3 and xx-4 into the same object)
+        objects = []
+        for key in Atlas(atlas).textures.keys():
+            keysplit = key.rpartition('-')
+            #try to cast the last section of the name after - as an int. if this works it's an animated frame
+            try:
+                fnum = int(keysplit[-1])
+                # now add the section of the name prior to the '-' as a key to objects if it's not there already, otherwise increment frames by 1.
+
+                if keysplit[0] not in [x.name for x in objects]:
+                    objects.append(WorldObject(atlas,keysplit[0],1))
+                else:
+                    objects[[x.name for x in objects].index(keysplit[0])].frames += 1
+
+            except ValueError:
+                print "error raised:", key
+                objects.append(WorldObject(atlas,key,1))
+
+        return objects
 
 
 class ScreenEditorApp(App):

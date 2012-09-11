@@ -27,3 +27,10 @@
         size: root.size if root.layers > 3 else (0,0)
         pos: root.pos
         mipmap: True
+
+<WorldObject>:
+    Image:
+        source: root.get_current_frame(root.parent.active_frame) + ("" if root.update_now else "")
+        size: root.size
+        pos: root.pos
+        mipmap: True
