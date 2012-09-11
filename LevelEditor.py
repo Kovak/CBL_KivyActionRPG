@@ -183,8 +183,8 @@ class Tile(Widget):
 
 
 class Screen(FloatLayout):
-    rows = NumericProperty(6)
-    cols = NumericProperty(9)
+    rows = NumericProperty(12)
+    cols = NumericProperty(18)
     tiles = ObjectProperty(None)
     active_frame = NumericProperty(0)
     parent = ObjectProperty(None)
@@ -207,7 +207,7 @@ class Screen(FloatLayout):
         self.tile_width = self.width/self.cols
 
         ### it works fine if you set it to a constant afterward.
-        self.tile_width = 77
+        self.tile_width = 64
 
         #start the animation counter
         Clock.schedule_interval(self.increment_active_frame, 1.0)
