@@ -12,19 +12,30 @@ from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.factory import Factory
 import time
+from copy import deepcopy
 
 class WorldObject(Widget):
-    def __init__(self,atlas,name,frames):
+    parent = ObjectProperty(None)
+    gridpos = ListProperty([0,0])
+
+    def __init__(self,atlas,name,frames,**kwargs):
         self.atlas = atlas
+        self.atlas_str = str('atlas://' + atlas + '/')
         self.name = name
         self.frames = frames
+        self.update_now = False
 
         try:
             self.icon = Atlas(atlas)[name]
-            self.icon_str = str('atlas://' + atlas + '/'+ name)
+            self.icon_str = str(self.atlas_str + name)
         except KeyError:
             self.icon = Atlas(atlas)[name + "-1"]
-            self.icon_str = str('atlas://' + atlas + '/'+ name + '-1')
+            self.icon_str = str(self.atlas_str + name + '-1')
+
+        super(WorldObject,self).__init__(**kwargs)
+
+    def get_current_frame(self,framecounter):
+        return self.atlas_str + self.name + '-' + str(framecounter % self.frames + 1) if self.frames > 1 else self.atlas_str + self.name
 
     def __str__(self):
         return self.name
@@ -198,9 +209,6 @@ class Screen(FloatLayout):
 
         self.tileset = tileset
 
-        
-
-
         super(Screen,self).__init__(**kwargs)
 
         ###This is super fucked up because width appears to be 1, even though it explicitly gets set to the right value. Looks like we need schedule_once to fix this; but I don't know why we didn't need it when using a GridLayout
@@ -230,12 +238,19 @@ class Screen(FloatLayout):
             for ctile in self.tiles:
                 self.add_widget(ctile)
 
+        self.world_objects = []
+
 
     def increment_active_frame(self, dt):
         self.active_frame += 1
 
     def tile_touch(self,tile):
         new_base_type = self.parent.current_tile_type
+
+        if isinstance(new_base_type,WorldObject):
+            self.add_world_object(new_base_type,tile)
+            return 
+
         all_surrounding_tiles = self.get_surrounding_tiles(*tile.gridpos)
 
         position_matrix = [
@@ -252,77 +267,22 @@ class Screen(FloatLayout):
 
                 active_tile.add_segment(Subtile(new_base_type.atlas,new_base_type.material_name,position,new_base_type.frames))
 
-    def tile_touch_OBSELETE(self,tile):
-        new_base_type = self.parent.current_tile_type
 
-        all_surrounding_tiles = self.get_surrounding_tiles(*tile.gridpos)
+    def add_world_object(self,base_object,tile):
+        o = WorldObject(base_object.atlas,base_object.name,base_object.frames,pos=tile.pos, gridpos = tile.gridpos,size=tile.size,size_hint=(None,None),parent=self)
+        world_object_gridpositions = [x.gridpos for x in self.world_objects]
 
-        position_matrix = [[7,8,9],[4,5,6],[1,2,3]]
-        position_addition_table = [
-        [1,2,2,4,5,-7,4,-3,5],
-        [2,2,2,-9,5,-7,-9,5,-7],
-        [2,2,3,-9,5,6,5,-1,6],
-        [4,-9,-9,4,5,5,4,-3,-3],
-        [5,5,5,5,5,5,5,5,5],
-        [-7,-7,6,5,5,6,-1,-1,6],
-        [4,-7,5,4,5,-1,7,8,8],
-        [-3,5,-1,-3,5,-1,8,8,8],
-        [5,-7,6,-3,5,6,8,8,9]
-        ]
-
-        for r,row in enumerate(position_matrix):
-            for c,position_code in enumerate(row):
-                active_tile = all_surrounding_tiles[r][c]
-
-                if active_tile is None:
-                    continue
-
-                old_interior = active_tile.interior
-                old_exterior = active_tile.exterior
-                new_interior = new_base_type
-                old_position = active_tile.position_code
-                new_position = position_code
-
-                # if it's an "inverse" tile, change it back to a normal tile before processing
-
-                # if old_exterior == new_interior and old_interior != new_interior:
-                #     active_tile.exterior = active_tile.interior = old_exterior = old_interior
-                #     active_tile.position_code = old_position = 5
-                #     print "Caught one!"
-
-
-
-                if old_interior == new_interior:
-
-                    sum_position = position_addition_table[old_position-1][new_position-1]
-
-                    if sum_position == 5:
-                        active_tile.interior = active_tile.exterior = new_interior
-                        active_tile.position_code = 5
-                    else:
-
-                        if sum_position < 0:
-                            active_tile.interior = old_exterior
-                            active_tile.exterior = new_interior
-                        else:
-                            active_tile.interior = new_interior
-                            # unnecessary but just to show what's going on
-                            # active_tile.exterior = old_exterior
-
-                        active_tile.position_code = abs(sum_position)
-                else:
-                    if new_position == 5:
-                        active_tile.interior = active_tile.exterior = new_interior
-                    else:
-                        active_tile.exterior = old_exterior
-                        active_tile.interior = new_interior
-                    active_tile.position_code = new_position
-
-
-                active_tile.frames = max(self.tile_frame_dict[active_tile.exterior],self.tile_frame_dict[active_tile.interior])
-                active_tile.is_animated = False if active_tile.frames == 1 else True
-                active_tile.update_source_text()
-
+        if o.gridpos in world_object_gridpositions:
+            old = self.world_objects[world_object_gridpositions.index(o.gridpos)] 
+            # old.atlas = o.atlas
+            # old.name = o.name
+            # old.frames = o.frames
+            old.__init__(o.atlas,o.name,o.frames,pos=tile.pos, gridpos = tile.gridpos,size=tile.size,size_hint=(None,None),parent=self)
+            old.update_now = not old.update_now
+        else:
+            self.world_objects.append(o)
+            self.add_widget(o)
+        
 
     def get_surrounding_tiles(self,col,row):
         tiles = [[None,None,None],[None,None,None],[None,None,None]]
@@ -345,6 +305,7 @@ class ScreenEditor(FloatLayout):
 
     def __init__(self, tileset, objectset, **kwargs):
         self.tileset = tileset
+        self.objectset = objectset
         self.current_tile_type = self.tileset[0]
 
         super(ScreenEditor,self).__init__(**kwargs)
@@ -376,7 +337,7 @@ class ScreenEditor(FloatLayout):
             height = len(buttons+objects)*(self.spacing + self.button_height) + self.spacing,
             )
 
-
+        # these don't really need to be separate at all
         for t in buttons:
             b = Button(text="", id = t.material_name, background_normal = t.icon_str, background_down = t.icon_str, size_hint_y = None, height = self.button_height)
             b.bind(on_release = self.button_callback)
@@ -396,6 +357,9 @@ class ScreenEditor(FloatLayout):
 
         if instance.id in [x.material_name for x in self.tileset]:
             self.current_tile_type = self.tileset[[x.material_name for x in self.tileset].index(instance.id)]
+
+        elif instance.id in [x.name for x in self.objectset]:
+            self.current_tile_type = self.objectset[[x.name for x in self.objectset].index(instance.id)]
 
 class ScreenEditorWidget(Widget):
     def __init__(self):
@@ -434,7 +398,6 @@ class ScreenEditorWidget(Widget):
                     objects[[x.name for x in objects].index(keysplit[0])].frames += 1
 
             except ValueError:
-                print "error raised:", key
                 objects.append(WorldObject(atlas,key,1))
 
         return objects

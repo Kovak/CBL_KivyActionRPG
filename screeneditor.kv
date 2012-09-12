@@ -30,7 +30,7 @@
 
 <WorldObject>:
     Image:
-        source: root.get_current_frame(root.parent.active_frame) + ("" if root.update_now else "")
+        source: root.get_current_frame(root.parent.active_frame) + ("" if root.update_now else "") if root.parent is not None else ""
         size: root.size
         pos: root.pos
         mipmap: True
