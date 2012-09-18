@@ -24,14 +24,22 @@ class ScreenEditor(FloatLayout):
     spacing = NumericProperty(10)
     level = ObjectProperty(None)
 
-    def __init__(self, tileset, objectset, **kwargs):
+    def __init__(self, tileset, objectatlas, **kwargs):
         self.tileset = tileset
-        self.objectset = objectset
+        self.objectset = self.get_world_objects(objectatlas)
         self.current_tile_type = self.tileset[0]
+        self.commands = {
+            "Save": self.save_screen,
+            "Close": self.close_screen,
+        }
 
         super(ScreenEditor,self).__init__(**kwargs)
+        Clock.schedule_once(self.setup_window)
         
-        self.draw_buttons(tileset,objectset)
+
+
+    def setup_window(self,dt):
+        self.draw_buttons(["Save","Close"],self.tileset,self.objectset)
 
         self.screen = Screen(
             self.tileset,
@@ -39,8 +47,8 @@ class ScreenEditor(FloatLayout):
             fill = self.current_tile_type,
             x = self.x + self.button_width + 2*self.spacing,
             y = self.y + self.spacing,
-            width = self.width - self.button_width - 3*self.spacing,
-            height = self.height - 2*self.spacing,
+            size = (self.width - self.button_width - 2*self.spacing, self.height - 2*self.spacing),
+            size_hint = (None,None),
             spacing = 0,
             padding = 0,
             )
@@ -48,61 +56,6 @@ class ScreenEditor(FloatLayout):
 
         self.add_widget(self.screen)
 
-
-    def draw_buttons(self,buttons,objects):
-
-        bl = BoxLayout(
-            orientation = 'vertical',
-            spacing = self.spacing,
-            size_hint_y = None, 
-            height = len(buttons+objects)*(self.spacing + self.button_height) + self.spacing,
-            )
-
-        # these don't really need to be separate at all
-        for t in buttons:
-            b = Button(text="", id = t.material_name, background_normal = t.icon_str, background_down = t.icon_str, size_hint_y = None, height = self.button_height)
-            b.bind(on_release = self.button_callback)
-            bl.add_widget(b)
-
-        for o in objects:
-            b = Button(text="", id = o.name, background_down = o.icon_str, background_normal = o.icon_str, size_hint_y = None, height = self.button_height)
-            b.bind(on_release = self.button_callback)
-            bl.add_widget(b)
-
-        sv = ScrollView(size_hint = (None, None), width=self.button_width, height = self.height, x = self.x + self.spacing,
-            y = self.y + self.spacing)
-        sv.add_widget(bl)
-        self.add_widget(sv)
-
-    def button_callback(self, instance):
-
-        if instance.id in [x.material_name for x in self.tileset]:
-            self.current_tile_type = self.tileset[[x.material_name for x in self.tileset].index(instance.id)]
-
-        elif instance.id in [x.name for x in self.objectset]:
-            self.current_tile_type = self.objectset[[x.name for x in self.objectset].index(instance.id)]
-
-
-
-class ScreenEditorWidget(Widget):
-    def __init__(self):
-        super(ScreenEditorWidget,self).__init__()
-        
-        tileset = [Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Grass',None,1),
-            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Sand',None,1),
-            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Water',None,4),
-            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Dirt',None,1)]
-
-        atlas='ArtAssets/WorldObjects/WorldObjects-SeaGrass_Forest-Set1_128.atlas'
-        objects = self.get_world_objects(atlas)
-
-        mainwidget = ScreenEditor(
-            tileset,
-            objects,
-            pos = (0, 0), 
-            size = (Window.width, Window.height))
-
-        self.add_widget(mainwidget)
 
     def get_world_objects(self,atlas):
         '''Reads all world objects from supplied atlas. Returns a list of WorldObjects'''
@@ -125,7 +78,74 @@ class ScreenEditorWidget(Widget):
 
         return objects
 
+    def draw_buttons(self,text_buttons,buttons,objects):
+
+        bl = BoxLayout(
+            orientation = 'vertical',
+            spacing = self.spacing,
+            size_hint_y = None, 
+            height = len(buttons+objects+text_buttons)*(self.spacing + self.button_height) + self.spacing,
+            )
+
+        # these don't really need to be separate at all
+        for t in text_buttons:
+            b = Button(text=str(t), id = str(t), size_hint_y = None, height = self.button_height)
+            b.bind(on_release = self.button_callback)
+            bl.add_widget(b)
+
+        for t in buttons:
+            b = Button(text="", id = t.material_name, background_normal = t.icon_str, background_down = t.icon_str, size_hint_y = None, height = self.button_height)
+            b.bind(on_release = self.button_callback)
+            bl.add_widget(b)
+
+        for o in objects:
+            b = Button(text="", id = o.name, background_down = o.icon_str, background_normal = o.icon_str, size_hint_y = None, height = self.button_height)
+            b.bind(on_release = self.button_callback)
+            bl.add_widget(b)
+
+        sv = ScrollView(size_hint = (None, None), width=self.button_width, height = self.height, x = self.x + self.spacing,
+            y = self.y + self.spacing)
+        sv.add_widget(bl)
+        self.add_widget(sv)
+
+    def button_callback(self, instance):
+        if instance.id in self.commands.keys():
+            self.commands[instance.id]()
+        elif instance.id in [x.material_name for x in self.tileset]:
+            self.current_tile_type = self.tileset[[x.material_name for x in self.tileset].index(instance.id)]
+        elif instance.id in [x.name for x in self.objectset]:
+            self.current_tile_type = self.objectset[[x.name for x in self.objectset].index(instance.id)]
+
+    def save_screen(self):
+        print "just saved the screen"
+
+    def close_screen(self):
+        print "just closed the screen"
+
+class ScreenEditorWidget(Widget):
+    """There is no reason at all for this to be a separate class from ScreenEditor. Needs to be refactored"""
+
+    def __init__(self):
+        super(ScreenEditorWidget,self).__init__()
+        
+        tileset = [Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Grass',None,1),
+            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Sand',None,1),
+            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Water',None,4),
+            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Dirt',None,1)]
+
+        atlas='ArtAssets/WorldObjects/WorldObjects-SeaGrass_Forest-Set1_128.atlas'
+
+        mainwidget = ScreenEditor(
+            tileset,
+            objects,
+            pos = (0, 0), 
+            size = (Window.width, Window.height))
+
+        self.add_widget(mainwidget)
+
+
 class MapEditorWidget(FloatLayout):
+
     def __init__(self,**kwargs):
         super(MapEditorWidget,self).__init__(**kwargs)
         pu = CBLPopup(self.menu_callback,title='Tales of Isan: Level Editor', buttons=['New Map','Load Map','Close'], size_hint=(.4,.4))
@@ -133,6 +153,21 @@ class MapEditorWidget(FloatLayout):
 
     def menu_callback(self,instance):
         print instance.text
+        if instance.text == 'New Map':
+            self.create_map()
+
+    def create_map(self):
+
+        # replace this with  "choose a tileset" routine, or do it at the class level if we decide tilesets should be set by map
+        tileset = [Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Grass',None,1),
+            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Sand',None,1),
+            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Water',None,4),
+            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Dirt',None,1)]
+        
+        atlas='ArtAssets/WorldObjects/WorldObjects-SeaGrass_Forest-Set1_128.atlas'
+
+        # self.screens = [[screen]]
+        self.add_widget(ScreenEditor(tileset,atlas,pos=(0,0)))
 
 
 class LevelEditorApp(App):

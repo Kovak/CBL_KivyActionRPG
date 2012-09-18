@@ -199,40 +199,26 @@ class Screen(FloatLayout):
         # self.atlas = parent.atlas
         # self.tile_names = parent.tile_names
         # self.tile_frame_dict = parent.tile_frame_dict
-
+        self.fill = fill
         self.tileset = tileset
 
         super(Screen,self).__init__(**kwargs)
 
-        ###This is super fucked up because width appears to be 1, even though it explicitly gets set to the right value. Looks like we need schedule_once to fix this; but I don't know why we didn't need it when using a GridLayout
-        self.tile_width = self.width/self.cols
-
-        ### it works fine if you set it to a constant afterward.
-        self.tile_width = 77
-
         #start the animation counter
         Clock.schedule_interval(self.increment_active_frame, 1.0)
+        Clock.schedule_once(self.setup_window)
         
-        #fill must always be provided until there is a load system
-        assert fill is not None
+        self.world_objects = []
 
-        if fill is not None:
-            # self.tiles = [Tile(self.atlas,
-            #     fill,
-            #     fill,
-            #     5,
-            #     self.tile_frame_dict[fill],
-            #     self,
-            #     (i,j),
-            #     size=(self.width/self.cols,self.width/self.cols),
-            #     size_hint=(None,None),
-            #     ) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
+    def setup_window(self,dt):
+        self.tile_width = min(self.width/self.cols,self.height/self.rows)
+        
+        assert self.fill is not None
+
+        if self.fill is not None:
             self.tiles = [Tile([self.tileset[0]],parent=self,size=(self.tile_width,self.tile_width), x = self.x + self.tile_width*j,y=self.y+self.tile_width*i,size_hint = (None,None),gridpos = (i,j)) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
             for ctile in self.tiles:
                 self.add_widget(ctile)
-
-        self.world_objects = []
-
 
     def increment_active_frame(self, dt):
         self.active_frame += 1
