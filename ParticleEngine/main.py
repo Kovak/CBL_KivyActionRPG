@@ -120,17 +120,18 @@ class ParticleEmitter(Widget):
     def on_touch_down(self,touch):
         if self.collide_point(*touch.pos):
             touch.grab(self)
-            return
+            print self.size
+
          
     def on_touch_move(self,touch):
         if touch.grab_current is self:
             self.pos = touch.x-32,touch.y-32
-            return
+
 
     def on_touch_up(self,touch):
         if touch.grab_current is self:
             touch.ungrab(self)
-            return
+
 
     def emit_particle(self,dt):
         particle_width = 64
@@ -197,8 +198,11 @@ class ParticleEngineApp(App):
         fl = FloatLayout(pos=(0,0),size=Window.size)
         fl.add_widget(CBL_DebugPanel(pos=(0,0),size=(100,50)))
         pw = Particle_Warehouse(1000, parent = fl)
-        e = ParticleEmitter(image_folder = 'VFX_SmokeParticle', image_location = 'VFX/smoke_particles.atlas', warehouse=pw, pos = (200,200))
-        e2 = ParticleEmitter(image_folder = 'VFX-Explosion', image_location = 'VFX/VFX_Set1_64.atlas', warehouse=pw, pos = (600,200))
+        for c in xrange(3):
+            e = ParticleEmitter(image_folder = 'VFX_SmokeParticle', image_location = 'VFX/smoke_particles.atlas', warehouse=pw, pos = (randint(100,Window.width-100),randint(100,Window.height-100)), size=(64,64), size_hint = (None, None))
+            fl.add_widget(e)
+        return fl
+
         fl.add_widget(e)
         fl.add_widget(e2)
         return fl
