@@ -93,15 +93,17 @@ class ParticleEmitter(Widget):
     scatter_init = NumericProperty(10)
     scatter_end = NumericProperty(30)
 
-    def __init__(self,warehouse=None,**kwargs):
+    def __init__(self,image_folder,image_location,warehouse=None,**kwargs):
         super(ParticleEmitter,self).__init__(**kwargs)
         self.warehouse = warehouse
         self.warehouse.register_emitter(self)
 
 
         # create list of textures
-        basename = 'VFX_SmokeParticle'
-        atlas = Atlas('VFX/smoke_particles.atlas')
+        # basename = 'VFX_SmokeParticle'
+        # atlas = Atlas('VFX/smoke_particles.atlas')
+        basename = image_folder
+        atlas = Atlas(image_location)
         all_keys = atlas.textures.keys()
         wanted_keys = filter(lambda x: x.startswith(basename),all_keys)
 
@@ -187,7 +189,8 @@ class ParticleEngineApp(App):
         fl = FloatLayout(pos=(0,0),size=Window.size)
         fl.add_widget(CBL_DebugPanel(pos=(0,0),size=(100,50)))
         pw = Particle_Warehouse(1000, parent = fl)
-        e = ParticleEmitter(warehouse=pw)
+        e = ParticleEmitter(image_folder = 'VFX_SmokeParticle', image_location = 'VFX/smoke_particles.atlas', warehouse=pw, pos = (200,200))
+        e2 = ParticleEmitter(image_folder = 'VFX-Explosion', image_location = 'VFX/VFX_Set1_64.atlas', warehouse=pw, pos = (600,200))
         return fl
 
 
