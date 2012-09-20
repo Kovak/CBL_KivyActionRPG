@@ -58,7 +58,7 @@ class Particle(Widget):
             Clock.schedule_once(self.increment_frame,self.frame_delay)
 
         # self.frame_delay *= (0.01*randint(75,125))
-        print self.active_frame
+        # print self.active_frame
         
 
     def reset(self):
@@ -67,6 +67,7 @@ class Particle(Widget):
         self.size = (0,0)
         # self.frame_delay = 0
         self.pos = (0,0)
+        self.active_frame = 1
         self.active_frame = 0
         self.color = [1.,1.,1.,1.]
 
@@ -119,10 +120,17 @@ class ParticleEmitter(Widget):
     def on_touch_down(self,touch):
         if self.collide_point(*touch.pos):
             touch.grab(self)
-
+            return
+         
     def on_touch_move(self,touch):
         if touch.grab_current is self:
-            self.center = touch.pos
+            self.pos = touch.x-32,touch.y-32
+            return
+
+    def on_touch_up(self,touch):
+        if touch.grab_current is self:
+            touch.ungrab(self)
+            return
 
     def emit_particle(self,dt):
         particle_width = 64
@@ -191,6 +199,8 @@ class ParticleEngineApp(App):
         pw = Particle_Warehouse(1000, parent = fl)
         e = ParticleEmitter(image_folder = 'VFX_SmokeParticle', image_location = 'VFX/smoke_particles.atlas', warehouse=pw, pos = (200,200))
         e2 = ParticleEmitter(image_folder = 'VFX-Explosion', image_location = 'VFX/VFX_Set1_64.atlas', warehouse=pw, pos = (600,200))
+        fl.add_widget(e)
+        fl.add_widget(e2)
         return fl
 
 
