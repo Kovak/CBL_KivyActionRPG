@@ -1,0 +1,3 @@
+title=Particle System
+author=Kerby
+orientation = landscape
