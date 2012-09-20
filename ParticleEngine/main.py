@@ -16,21 +16,20 @@ class Particle(Widget):
     
     color = ListProperty([0,.8,.7,1.])
     textures = ObjectProperty(None)
-    active_frame = NumericProperty(1)
+    active_frame = NumericProperty(0)
 
-    def __init__(self, dir_vector = None, duration = None, frame_delay = None, **kwargs):
+    def __init__(self, **kwargs):
         # remove when there are more ways of calling Particle
-        assert dir_vector is not None and duration is not None
 
         super(Particle,self).__init__(**kwargs)
-        self.frames = len(self.textures) - 1
+        self.frames = len(self.textures) if self.textures is not None else 1
 
-        if self.frames > 1:
-            Clock.schedule_interval(self.increment_frame,frame_delay)
-
-        anim = Animation(pos = (self.x + dir_vector[0], self.y + dir_vector[1]), duration=duration)
-        anim.bind(on_complete = self.delete)
-        anim.start(self)
+        # if self.frames > 1:
+        #     Clock.schedule_interval(self.increment_frame,frame_delay)
+        # if duration > 0:
+        #     anim = Animation(pos = (self.x + dir_vector[0], self.y + dir_vector[1]), duration=duration)
+        #     anim.bind(on_complete = self.delete)
+        #     anim.start(self)
 
     def delete(self, instance, value):
         self.parent.remove_widget(self)
@@ -38,7 +37,7 @@ class Particle(Widget):
     def increment_frame(self, dt):
         if random() < .4:
             return
-        if self.active_frame < self.frames: 
+        if self.active_frame < self.frames - 1: 
             # print self.active_frame
             self.active_frame += 1
             self.color[3] *= 0.8
@@ -108,14 +107,22 @@ class ParticleEmitter(Widget):
             size_hint = (None, None))
         self.add_widget(p)
 
+class Particle_Warehouse():
+
+    def __init__(self, number_of_particles, parent=None):
+        self.parent = parent
+        self.particles = []
+        for x in range(number_of_particles):
+            self.particles.append(Particle(dir_vector = Vector(0,0), duration = 0, size = (0,0), size_hint = (None,None), pos = (0,0)))
+            self.parent.add_widget(self.particles[-1])
+
 
 class ParticleEngineApp(App):
     def build(self):
         # 'atlas://VFX/smoke_particles/VFX_SmokeParticle'
         fl = FloatLayout(pos=(0,0),size=Window.size)
         fl.add_widget(CBL_DebugPanel(pos=(0,0),size=(100,50)))
-        for dummy in range(5):
-            fl.add_widget(ParticleEmitter(size = (128,128), size_hint=(None,None), pos = (randint(100,Window.width-100),randint(100,Window.height-100))))
+        pw = Particle_Warehouse(5000, parent = fl)
         return fl
 
 

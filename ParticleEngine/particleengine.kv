@@ -14,7 +14,7 @@
         Color:
             rgba: self.color
         Rectangle:
-            texture: self.textures[self.active_frame]
+            texture: self.textures[self.active_frame] if self.textures is not None else None
             size: self.size
             pos: self.pos
 
