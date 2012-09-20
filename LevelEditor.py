@@ -14,7 +14,10 @@ from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.factory import Factory
 import time
+import os
 from BaseObjects import WorldObject, Subtile, Tile, Screen, CBLPopup
+from DatabaseReader import DatabaseReader
+
 
 
 class ScreenEditor(FloatLayout):
@@ -24,10 +27,17 @@ class ScreenEditor(FloatLayout):
     spacing = NumericProperty(10)
     level = ObjectProperty(None)
 
-    def __init__(self, tileset, objectatlas, **kwargs):
-        self.tileset = tileset
-        self.objectset = self.get_world_objects(objectatlas)
+    def __init__(self,dbr,maplabel,screenid,**kwargs):
+        self.tileset = dbr.tile_dict.values()
+        print "tileset:",self.tileset
+        self.init_tile_list = dbr.get_screen(maplabel,screenid)
         self.current_tile_type = self.tileset[0]
+
+        # will be removed
+        object_atlas='ArtAssets/WorldObjects/WorldObjects-SeaGrass_Forest-Set1_128.atlas'
+        self.objectset = self.get_world_objects(object_atlas)
+        
+
         self.commands = {
             "Save": self.save_screen,
             "Close": self.close_screen,
@@ -37,14 +47,14 @@ class ScreenEditor(FloatLayout):
         Clock.schedule_once(self.setup_window)
         
 
-
     def setup_window(self,dt):
-        self.draw_buttons(["Save","Close"],self.tileset,self.objectset)
+        # draw buttons for the commands, the tileset, and the object set
+        self.draw_buttons(self.commands.keys(),self.tileset,self.objectset)
 
         self.screen = Screen(
             self.tileset,
+            self.init_tile_list,
             parent = self,
-            fill = self.current_tile_type,
             x = self.x + self.button_width + 2*self.spacing,
             y = self.y + self.spacing,
             size = (self.width - self.button_width - 2*self.spacing, self.height - 2*self.spacing),
@@ -120,54 +130,55 @@ class ScreenEditor(FloatLayout):
         print "just saved the screen"
 
     def close_screen(self):
-        print "just closed the screen"
-
-class ScreenEditorWidget(Widget):
-    """There is no reason at all for this to be a separate class from ScreenEditor. Needs to be refactored"""
-
-    def __init__(self):
-        super(ScreenEditorWidget,self).__init__()
+        print "closed screen"
         
-        tileset = [Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Grass',None,1),
-            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Sand',None,1),
-            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Water',None,4),
-            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Dirt',None,1)]
 
-        atlas='ArtAssets/WorldObjects/WorldObjects-SeaGrass_Forest-Set1_128.atlas'
-
-        mainwidget = ScreenEditor(
-            tileset,
-            objects,
-            pos = (0, 0), 
-            size = (Window.width, Window.height))
-
-        self.add_widget(mainwidget)
 
 
 class MapEditorWidget(FloatLayout):
 
     def __init__(self,**kwargs):
         super(MapEditorWidget,self).__init__(**kwargs)
+        
+        # open up worlddb.sqlite, for now
+        self.dbr = DatabaseReader(os.path.join(os.path.dirname(__file__),'worlddb.sqlite'))
+        
         pu = CBLPopup(self.menu_callback,title='Tales of Isan: Level Editor', buttons=['New Map','Load Map','Close'], size_hint=(.4,.4))
         pu.open()
 
     def menu_callback(self,instance):
         print instance.text
         if instance.text == 'New Map':
-            self.create_map()
+            self.create_map('000')
+        elif instance.text == 'Load Map':
+            self.load_map()
 
-    def create_map(self):
+    def create_map(self,maplabel):
+        self.rows = 6
+        self.cols = 9
 
-        # replace this with  "choose a tileset" routine, or do it at the class level if we decide tilesets should be set by map
-        tileset = [Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Grass',None,1),
+        # this should be somewhere else
+        self.dbr.add_tileset([Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Grass',None,1),
             Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Sand',None,1),
             Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Water',None,4),
-            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Dirt',None,1)]
-        
-        atlas='ArtAssets/WorldObjects/WorldObjects-SeaGrass_Forest-Set1_128.atlas'
+            Subtile('atlas://ArtAssets/TileSets/Tileset-SeaGrass_Forest_128/','Dirt',None,1)])
 
-        # self.screens = [[screen]]
-        self.add_widget(ScreenEditor(tileset,atlas,pos=(0,0)))
+        # for debugging, ignore if map already exists
+        self.dbr.add_map(maplabel,rows=self.rows,cols=self.cols)
+
+        # get all tiles used in the database
+        tileset = self.dbr.tile_dict
+
+        # now make a screen filled with the second item in the tileset
+        first_tile_id = tileset.keys()[1]
+        tiles = [[first_tile_id] for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
+        screenid = self.dbr.add_screen(tiles,None,maplabel,None,None)
+        
+        # screen_editor = ScreenEditor(self.dbr,maplabel,screenid)
+        # self.add_widget(screen_editor)
+
+    def load_map(self,maplabel):
+        pass
 
 
 class LevelEditorApp(App):

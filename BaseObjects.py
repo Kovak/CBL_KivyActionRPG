@@ -35,12 +35,13 @@ class WorldObject(Widget):
         return self.name
 
 class Subtile(Widget):
-    def __init__(self,atlas,material_name,position,frames):
+    def __init__(self,atlas,material_name,position,frames,subtile_id=None):
         self.atlas = atlas
         self.material_name = material_name
         self.position = [[True,True],[True,True]] if position is None else position
         self.frames = frames
-
+        self.subtile_id = subtile_id
+        
         # Caution: this parses the atlas URL and may or may not be compatible with windows. I do not know. This code ought to be refactored to be the same as WorldObject anyway
         atlas_stripped = atlas[8:].rpartition('/')[0]+'.atlas'
 
@@ -193,13 +194,13 @@ class Screen(FloatLayout):
     active_frame = NumericProperty(0)
     parent = ObjectProperty(None)
 
-    def __init__(self,tileset,fill=None,**kwargs):
+    def __init__(self,tileset,init_tile_list,**kwargs):
         # get reference to parent (ScreenEditor) and grab atlas/tilenames
         # self.parent = parent
         # self.atlas = parent.atlas
         # self.tile_names = parent.tile_names
         # self.tile_frame_dict = parent.tile_frame_dict
-        self.fill = fill
+        self.init_tile_list = init_tile_list
         self.tileset = tileset
 
         super(Screen,self).__init__(**kwargs)
@@ -212,13 +213,11 @@ class Screen(FloatLayout):
 
     def setup_window(self,dt):
         self.tile_width = min(self.width/self.cols,self.height/self.rows)
-        
-        assert self.fill is not None
 
-        if self.fill is not None:
-            self.tiles = [Tile([self.tileset[0]],parent=self,size=(self.tile_width,self.tile_width), x = self.x + self.tile_width*j,y=self.y+self.tile_width*i,size_hint = (None,None),gridpos = (i,j)) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
-            for ctile in self.tiles:
-                self.add_widget(ctile)
+
+        self.tiles = [Tile(self.init_tile_list[int(i*self.cols+j)],parent=self,size=(self.tile_width,self.tile_width), x = self.x + self.tile_width*j,y=self.y+self.tile_width*i,size_hint = (None,None),gridpos = (i,j)) for i in xrange(int(self.rows)) for j in xrange(int(self.cols))]
+        for ctile in self.tiles:
+            self.add_widget(ctile)
 
     def increment_active_frame(self, dt):
         self.active_frame += 1
