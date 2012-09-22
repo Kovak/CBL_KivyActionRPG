@@ -106,47 +106,6 @@ class ParticleEmitter(Widget):
         return [atlas[key] for key in wanted_keys]
 
 
-
-class oldParticleEmitter(Widget):
-    NUMBER = 5
-
-    def __init__(self,image_basename,image_location,debug=None,**kwargs):
-        super(ParticleEmitter,self).__init__(**kwargs)
-
-        self.debug = debug
-        self.rectx = self.x + self.width/2.
-        self.recty = self.y + self.height/2.
-
-
-        basename = image_basename
-        atlas = Atlas(image_location)
-        all_keys = atlas.textures.keys()
-        wanted_keys = filter(lambda x: x.startswith(basename),all_keys)
-
-        if len(wanted_keys) > 1:
-            pattern = re.compile(r'[0-9]+$')
-            print wanted_keys
-            wanted_keys.sort(key=lambda x: int(pattern.search(x).group()))
-
-        self.texture_list = [atlas[key] for key in wanted_keys]
-        
-        if self.debug is not None: self.debug.particles = 1
-        for d in xrange(self.NUMBER):
-            self.draw_new_particle(0)
-
-        # Clock.schedule_interval(self.add_particles,1.)
-
-
-    def remove(self,rect):
-        self.canvas.remove(rect)
-        self.debug.particles -= 1
-
-    def draw_new_particle(self,dt):
-        with self.canvas:
-            rect = ParticleGroup((self.rectx,self.recty), texture_list = self.texture_list, parent = self, initial_velocity = (50.,50.))
-
-
-
 class CBL_DebugPanel(BoxLayout):
     fps = StringProperty(None)
     particles = NumericProperty(0)
