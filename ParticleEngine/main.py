@@ -26,6 +26,8 @@ class Particle(Rectangle):
         self.dx = self.refresh_time * initial_params['velocity_x']
         self.dy = self.refresh_time * initial_params['velocity_y']
         self.width_gen = (x for x in param_changes['width'])
+        self.color_code = (random(), random(), random(), random())
+        self.color = Color(*self.color_code)
         self.update_pos(None)
         self.update_width(None)
 
@@ -40,9 +42,6 @@ class Particle(Rectangle):
             return False
         self.size = (self.size[0]+val, self.size[1])
         Clock.schedule_once(self.update_width,time)
-
-
-
 
 
 class ParticleGroup(InstructionGroup):
@@ -82,9 +81,10 @@ class ParticleEmitter(Widget):
                 'x': self.x,
                 'y': self.y,
                 'width': 64,
-                'height': 64,}
-            param_changes = {'width': [(20,.5),(20,.5),(20,.5),(40,.5)],}
-            scatterdict = {'width': 0, 'velocity_x': 5}
+                'height': 64,
+                'color': (1.0, 1.0, 1.0, 1.0),}
+            param_changes = {'width': [(20,.5),(20,.5),(20,.5),(40,.5)],'color':(-.1),}
+            scatterdict = {'width': 0, 'velocity_x': 5, 'x': 100, 'y': 100,}
             
         self.emit_particle_group(initial_params, param_changes, scatterdict)
 
