@@ -15,24 +15,39 @@ from random import random, randint, uniform
 from functools import partial
 import re
 
-class Particle(Rectangle):
+class Particle(InstructionGroup):
     refresh_time = .05
     frame = 0
 
-    def __init__(self, initial_params, param_changes, **kwargs):
+    def __init__(self, initial_params, param_changes, parent, draworder_var, **kwargs):
         # these parameters are necessary for Rectangle
-        super(Particle,self).__init__(pos=(initial_params['x'],initial_params['y']),size=(initial_params['width'],initial_params['height']),texture=initial_params['texture_list'][0])
-        print param_changes
+        super(Particle,self).__init__()
+        self.rect = Rectangle(pos=(initial_params['x'],initial_params['y']),size=(initial_params['width'],initial_params['height']),texture=initial_params['texture_list'][0])
+        self.add(self.rect)
+        print 'rectangle index:', self.indexof(self.rect)
+        self.draw_order = draworder_var
+        self.parent = parent
         self.dx = self.refresh_time * initial_params['velocity_x']
         self.dy = self.refresh_time * initial_params['velocity_y']
         self.width_gen = (x for x in param_changes['width'])
+        self.color_a_gen = (x for x in param_changes['color_a'])
+        #I used the conversion from 255 to 1.0 scale here so that we can format the input in such a way as to
+        #make sense to the artists who will most likely be using these tools
+        #I guess we could make the conversion at another time also, but it's kinda nice because it works with
+        #the current way the scatter works
+        #self.color_code = (initial_params['color_r']/255., initial_params['color_g']/255., initial_params['color_b']/255., initial_params['color_a']/255.)
         self.color_code = (random(), random(), random(), random())
-        self.color = Color(*self.color_code)
         self.update_pos(None)
         self.update_width(None)
+        self.color = Color(*self.color_code)
+        self.insert(0, self.color)
+        print 'color index:', self.indexof(self.color)
+        self.color_index = self.indexof(self.color)
+        Clock.schedule_once(self.update_color,.5)
+
 
     def update_pos(self,dt):
-        self.pos = (self.pos[0] + self.dx, self.pos[1] + self.dy)
+        self.rect.pos = (self.rect.pos[0] + self.dx, self.rect.pos[1] + self.dy)
         Clock.schedule_once(self.update_pos,self.refresh_time)
 
     def update_width(self,dt):
@@ -40,19 +55,39 @@ class Particle(Rectangle):
             val, time = self.width_gen.next()
         except:
             return False
-        self.size = (self.size[0]+val, self.size[1])
+        self.size = (self.rect.size[0]+val, self.rect.size[1])
         Clock.schedule_once(self.update_width,time)
+
+        
+
+    def update_color(self, dt):
+        try:
+            val, time = self.color_a_gen.next()
+        except:
+            return False
+        self.color_code = (self.color_code[0], self.color_code[1], self.color_code[2], val/255. )
+        print "parent removing color at index,", self.indexof(self.color)
+        index = self.indexof(self.color)
+        self.remove(self.color)
+        newcolor = Color(*self.color_code)
+        self.color = newcolor
+        self.insert(index , self.color)
+        print 'inserted new color at index', self.indexof(self.color)
+        Clock.schedule_once(self.update_color,time)
 
 
 class ParticleGroup(InstructionGroup):
     
-    def __init__(self, initial_params, param_changes = None, scatterdict = None, batch_size = 20, **kwargs):
+    def __init__(self, initial_params, param_changes = None, scatterdict = None, batch_size = 100, **kwargs):
         super(ParticleGroup,self).__init__()
         if scatterdict is None: scatterdict = {}
         for x in xrange(batch_size):
             # r = Particle(initial_params, None)
             # self.add(r)
-            p = Particle(self.randomize_params(initial_params,scatterdict),param_changes)
+            draworder_var = x
+            p = Particle(self.randomize_params(initial_params,scatterdict),param_changes,self, draworder_var)
+            
+
 
     def randomize_params(self,param_dict,scatterdict):
         params = param_dict.copy()
@@ -70,7 +105,7 @@ class ParticleGroup(InstructionGroup):
 
 class ParticleEmitter(Widget):
 
-    def __init__(self, image_basename, image_location, emmitter_type = 'smoke', particles = 300,**kwargs):
+    def __init__(self, image_basename, image_location, emmitter_type = 'smoke', particle_groups = 2, pos = (400, 200), **kwargs):
         super(ParticleEmitter,self).__init__()
         assert emmitter_type in ['smoke']
 
@@ -82,11 +117,14 @@ class ParticleEmitter(Widget):
                 'y': self.y,
                 'width': 64,
                 'height': 64,
-                'color': (1.0, 1.0, 1.0, 1.0),}
-            param_changes = {'width': [(20,.5),(20,.5),(20,.5),(40,.5)],'color':(-.1),}
-            scatterdict = {'width': 0, 'velocity_x': 5, 'x': 100, 'y': 100,}
-            
-        self.emit_particle_group(initial_params, param_changes, scatterdict)
+                'color_r': 205,
+                'color_g': 205,
+                'color_b': 205,
+                'color_a': 255,}
+            param_changes = {'width': [(20,.5),(20,.5),(20,.5),(40,.5)], 'color_a': [(255, 2.), (200, 2.), (100, 2.), (0, 2.)]}
+            scatterdict = {'width': 0, 'velocity_x': 5, 'x': 50, 'y': 50, 'color_r': 50, 'color_g': 50, 'color_b': 50}
+        for x in xrange(particle_groups): 
+            self.emit_particle_group(initial_params, param_changes, scatterdict)
 
     def emit_particle_group(self, initial_params, param_changes, scatterdict):
         with self.canvas:
