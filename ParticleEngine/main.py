@@ -19,14 +19,12 @@ class Particle(InstructionGroup):
     refresh_time = .05
     frame = 0
 
-    def __init__(self, initial_params, param_changes, parent, draworder_var, **kwargs):
+    def __init__(self, initial_params, param_changes, **kwargs):
         # these parameters are necessary for Rectangle
         super(Particle,self).__init__()
         self.rect = Rectangle(pos=(initial_params['x'],initial_params['y']),size=(initial_params['width'],initial_params['height']),texture=initial_params['texture_list'][0])
         self.add(self.rect)
         print 'rectangle index:', self.indexof(self.rect)
-        self.draw_order = draworder_var
-        self.parent = parent
         self.dx = self.refresh_time * initial_params['velocity_x']
         self.dy = self.refresh_time * initial_params['velocity_y']
         self.width_gen = (x for x in param_changes['width'])
@@ -82,10 +80,7 @@ class ParticleGroup(InstructionGroup):
         super(ParticleGroup,self).__init__()
         if scatterdict is None: scatterdict = {}
         for x in xrange(batch_size):
-            # r = Particle(initial_params, None)
-            # self.add(r)
-            draworder_var = x
-            p = Particle(self.randomize_params(initial_params,scatterdict),param_changes,self, draworder_var)
+            p = Particle(self.randomize_params(initial_params,scatterdict),param_changes)
             
 
 
