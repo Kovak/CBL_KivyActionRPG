@@ -12,6 +12,7 @@ from kivy.animation import Animation
 from kivy.vector import Vector
 from kivy.atlas import Atlas
 from random import random, randint, uniform
+from collections import deque
 from functools import partial
 import re
 
@@ -19,15 +20,40 @@ class Particle(Rectangle):
     refresh_time = .05
     frame = 0
 
-    def __init__(self, initial_params, param_changes, **kwargs):
+    def __init__(self, initial_params, param_changes, parent = None, dormant = False, **kwargs):
         # these parameters are necessary for Rectangle
-        super(Particle,self).__init__(pos=(initial_params['x'],initial_params['y']),size=(initial_params['width'],initial_params['height']),texture=initial_params['texture_list'][0])
-        print param_changes
-        self.dx = self.refresh_time * initial_params['velocity_x']
-        self.dy = self.refresh_time * initial_params['velocity_y']
-        self.width_gen = (x for x in param_changes['width'])
+        super(Particle,self).__init__(pos=(initial_params['x'],initial_params['y']),size=(initial_params['width'],initial_params['height']),texture=initial_params['texture'])
+        self.initial_params = initial_params
+        self.param_changes = param_changes
+        self.parent = parent
+        self.dormant = dormant
+
+        if not dormant:
+            self.activate()
+
+
+    def activate(self):
+        self.pos = (self.initial_params['x'],self.initial_params['y'])
+        self.size  = (self.initial_params['width'],self.initial_params['height'])
+        self.texture = self.initial_params['texture']
+        self.dormant = False
+        self.dx = self.refresh_time * self.initial_params['velocity_x']
+        self.dy = self.refresh_time * self.initial_params['velocity_y']
+
+        Clock.schedule_once(self.kill,self.initial_params['lifetime'])
+
+        if 'width' in self.param_changes:
+            self.width_gen = (x for x in self.param_changes['width'])
+            self.update_width(None)
+        if 'height' in self.param_changes:
+            self.height_gen = (x for x in self.param_changes['height'])
+            self.update_height(None)
+        if 'texture' in self.param_changes:
+            self.texture_gen = (x for x in self.param_changes['texture'])
+            self.update_texture(None)
+        
         self.update_pos(None)
-        self.update_width(None)
+
 
     def update_pos(self,dt):
         self.pos = (self.pos[0] + self.dx, self.pos[1] + self.dy)
@@ -36,10 +62,34 @@ class Particle(Rectangle):
     def update_width(self,dt):
         try:
             val, time = self.width_gen.next()
-        except:
+        except StopIteration:
             return False
         self.size = (self.size[0]+val, self.size[1])
         Clock.schedule_once(self.update_width,time)
+
+    def update_height(self,dt):
+        try:
+            val, time = self.height_gen.next()
+        except StopIteration:
+            return False
+        self.size = (self.size[0], self.size[1]+val)
+        Clock.schedule_once(self.update_height,time)
+
+    def update_texture(self,dt):
+        try:
+            val, time = self.texture_gen.next()
+        except StopIteration:
+            return False
+        self.texture = val
+        Clock.schedule_once(self.update_texture,time)
+
+    def kill(self,dt):
+        self.dormant = True
+        Clock.unschedule(self.update_pos)
+        Clock.unschedule(self.update_width)
+        Clock.unschedule(self.update_texture)
+        Clock.unschedule(self.update_height)
+        self.parent.reap_particle(self)
 
 
 
@@ -47,17 +97,38 @@ class Particle(Rectangle):
 
 class ParticleGroup(InstructionGroup):
     
-    def __init__(self, initial_params, param_changes = None, scatterdict = None, batch_size = 20, **kwargs):
+    def __init__(self, initial_params, param_changes = None, scatterdict = None, batch_size = 30, **kwargs):
         super(ParticleGroup,self).__init__()
-        if scatterdict is None: scatterdict = {}
-        for x in xrange(batch_size):
-            # r = Particle(initial_params, None)
-            # self.add(r)
-            p = Particle(self.randomize_params(initial_params,scatterdict),param_changes)
+        self.scatterdict = scatterdict if scatterdict is not None else {}
+        self.initial_params = initial_params
+        self.param_changes = param_changes if param_changes is not None else {}
+        self.batch_size = batch_size
+        self.emit_rate = initial_params['lifetime']/(batch_size*.75)
+
+        # must be called with Clock schedule, or it goes ahead and adds all these particles prematurely
+        Clock.schedule_once(self.init_particles)
+        # Clock.schedule_once(self.emit_particle,.1)
+        
+    def emit_particle(self,dt):
+        try:
+            p = self.particles.pop()
+            p.activate()
+            self.add(p)
+        except IndexError:
+            print "empty"
+            pass
+        Clock.schedule_once(self.emit_particle,self.emit_rate)
+
+    def init_particles(self,dt):
+        self.particles = deque([Particle(self.randomize_params(self.initial_params,self.scatterdict),self.param_changes,parent=self,dormant=True) for d in xrange(self.batch_size)],maxlen=self.batch_size)
+        Clock.schedule_once(self.emit_particle)
+
+    def reap_particle(self,pt):
+        self.particles.appendleft(pt)
+        self.remove(pt)
 
     def randomize_params(self,param_dict,scatterdict):
         params = param_dict.copy()
-
         for key in params.keys():
             try:
                 if key in scatterdict:
@@ -71,26 +142,31 @@ class ParticleGroup(InstructionGroup):
 
 class ParticleEmitter(Widget):
 
-    def __init__(self, image_basename, image_location, emmitter_type = 'smoke', particles = 300,**kwargs):
+    def __init__(self, image_basename, image_location, emmitter_type = 'smoke', batches = 3, batch_size = 900,**kwargs):
         super(ParticleEmitter,self).__init__()
         assert emmitter_type in ['smoke']
 
         if emmitter_type == 'smoke':
+            texture_list = self.get_texture_list('VFX-Explosion','VFX/VFX_Set1_64.atlas')
             initial_params = {'velocity_x': 0,
-                'velocity_y': 50,
-                'texture_list': self.get_texture_list('VFX_Smoke','VFX/VFX_Set1_64.atlas'),
-                'x': self.x,
-                'y': self.y,
+                'velocity_y': 0,
+                'texture': texture_list[0],
+                'x': 200,
+                'y': 200,
+                'lifetime': 4.,
                 'width': 64,
                 'height': 64,}
-            param_changes = {'width': [(20,.5),(20,.5),(20,.5),(40,.5)],}
-            scatterdict = {'width': 0, 'velocity_x': 5}
-            
-        self.emit_particle_group(initial_params, param_changes, scatterdict)
+            param_changes = {'texture': zip(texture_list[1:],[0.6]*(len(texture_list)-1)),
+                                'width': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25)],
+                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),]}
+            scatterdict = {'velocity_x': 200, 'velocity_y': 200, 'lifetime': .8}
+        
+        for b in range(batches):
+            self.emit_particle_group(initial_params, param_changes, scatterdict, batch_size)
 
-    def emit_particle_group(self, initial_params, param_changes, scatterdict):
+    def emit_particle_group(self, initial_params, param_changes, scatterdict, batch_size):
         with self.canvas:
-            p = ParticleGroup(initial_params, param_changes=param_changes, scatterdict=scatterdict)
+            p = ParticleGroup(initial_params, param_changes=param_changes, scatterdict=scatterdict, batch_size = batch_size)
 
     def get_texture_list(self, image_basename, image_location):
         basename = image_basename
@@ -110,13 +186,13 @@ class CBL_DebugPanel(BoxLayout):
     fps = StringProperty(None)
     particles = NumericProperty(0)
 
+    def __init__(self,**kwargs):
+        super(CBL_DebugPanel,self).__init__(**kwargs)
+        self.update(None)
+
     def update(self, dt):
         self.fps = str(int(Clock.get_fps()))
         Clock.schedule_once(self.update)
-
-    def on_touch_down(self,touch):
-        if self.collide_point(*touch.pos):
-            self.update(0)
 
 class LowLevelParticleEngineApp(App):
     def build(self):
