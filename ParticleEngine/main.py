@@ -116,18 +116,18 @@ class Particle(InstructionGroup):
 
 
     def kill(self,dt):
-        self.dormant = True
-        Clock.unschedule(self.update_pos)
-        Clock.unschedule(self.update_width)
-        Clock.unschedule(self.update_texture)
-        Clock.unschedule(self.update_height)
-        Clock.unschedule(self.update_color_a)
+        # self.dormant = True
+        # Clock.unschedule(self.update_pos)
+        # Clock.unschedule(self.update_width)
+        # Clock.unschedule(self.update_texture)
+        # Clock.unschedule(self.update_height)
+        # Clock.unschedule(self.update_color_a)
         self.parent.reap_particle(self)
 
 
 class ParticleEmitter(Widget):
 
-    def __init__(self, emmitter_type = 'smoke', num_particles = 50, **kwargs):
+    def __init__(self, emmitter_type = 'smoke', num_particles = 30, **kwargs):
         super(ParticleEmitter,self).__init__(**kwargs)
         assert emmitter_type in ['smoke']
         self.emmitter_type = emmitter_type
@@ -155,23 +155,24 @@ class ParticleEmitter(Widget):
                                     'color_a': 1.,}
             self.param_changes = {'texture': zip(texture_list[1:],[0.3]*(len(texture_list)-1)),
                                 'width': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25)],
-                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],
-                                'color_a': [(-50,.2),(-50,.2),(-50,.2),(-50,.2),(-50,.2),]}
+                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],}
+                                # 'color_a': [(-50,.2),(-50,.2),(-50,.2),(-50,.2),(-50,.2),]}
             self.scatterdict = {'velocity_x': 100, 
                             'velocity_y': 20, 
                             'lifetime': .1, 
                             'x': 10,
                             'y': 10}
+            self.slate = InstructionGroup()
+            self.canvas.add(self.slate)
         
 
         self.emit_rate = self.initial_params['lifetime']/float(self.num_particles*1.1)
         Clock.schedule_once(self.emit_particle)
 
     def emit_particle(self, dt):
-        with self.canvas:
+        self.slate.add(Particle(self.randomize_params(),self.param_changes,parent=self,dormant=False))
             # p = ParticleGroup(initial_params, param_changes=param_changes, scatterdict=scatterdict, batch_size = batch_size)
-            p = Particle(self.randomize_params(),self.param_changes,parent=self,dormant=False)
-        self.counter += 1
+        # self.counter += 1
         if self.counter < self.num_particles: Clock.schedule_once(self.emit_particle,self.emit_rate)
 
     def get_texture_list(self, image_basename, image_location):
@@ -188,10 +189,10 @@ class ParticleEmitter(Widget):
 
     def reap_particle(self,particle):
         # these lines are only necessary if particle is moving or we want to alter effect. we will want to find a way to not run them in other cases.
-        particle.initial_params = self.randomize_params()
-        particle.param_changes = self.param_changes
-
-        particle.activate()
+        # particle.initial_params = self.randomize_params()
+        # particle.param_changes = self.param_changes
+        # particle.activate()
+        self.slate.remove(particle)
 
     def randomize_params(self):
         params = self.initial_params.copy()
@@ -225,7 +226,7 @@ class LowLevelParticleEngineApp(App):
         db_panel = CBL_DebugPanel(pos=(0,0),size=(100,50),size_hint = (None,None))
         fl.add_widget(db_panel)
         for d in xrange(4):
-            fl.add_widget(ParticleEmitter(emitter_type = 'smoke', debug=db_panel, pos=(randint(100,Window.width - 100),randint(100,Window.height - 100)),size=(128,128),size_hint=(None,None)))
+            fl.add_widget(ParticleEmitter(emitter_type = 'smoke', num_particles=50, debug=db_panel, pos=(randint(100,Window.width - 100),randint(100,Window.height - 100)),size=(128,128),size_hint=(None,None)))
         return fl
 
 
