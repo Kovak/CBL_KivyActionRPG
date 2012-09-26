@@ -16,13 +16,16 @@ from collections import deque
 from functools import partial
 import re
 
-class Particle(Rectangle):
-    refresh_time = .05
+class Particle(InstructionGroup):
+    refresh_time = .08
     frame = 0
 
     def __init__(self, initial_params, param_changes, parent = None, dormant = False, **kwargs):
         # these parameters are necessary for Rectangle
-        super(Particle,self).__init__(pos=(initial_params['x'],initial_params['y']),size=(initial_params['width'],initial_params['height']),texture=initial_params['texture'])
+        super(Particle,self).__init__()
+        self.rect = Rectangle(pos=(initial_params['x'],initial_params['y']),size=(initial_params['width'],initial_params['height']),texture=initial_params['texture'])
+        self.add(self.rect)
+
         self.initial_params = initial_params
         self.param_changes = param_changes
         self.parent = parent
@@ -33,9 +36,14 @@ class Particle(Rectangle):
 
 
     def activate(self):
-        self.pos = (self.initial_params['x'],self.initial_params['y'])
-        self.size  = (self.initial_params['width'],self.initial_params['height'])
-        self.texture = self.initial_params['texture']
+        self.rect.pos = (self.initial_params['x'],self.initial_params['y'])
+        self.rect.size  = (self.initial_params['width'],self.initial_params['height'])
+        self.rect.texture = self.initial_params['texture']
+
+        self.color_code = (0, 0, 1., 1.)
+        self.color = Color(*self.color_code)
+        self.insert(0, self.color)
+
         self.dormant = False
         self.dx = self.refresh_time * self.initial_params['velocity_x']
         self.dy = self.refresh_time * self.initial_params['velocity_y']
@@ -51,12 +59,15 @@ class Particle(Rectangle):
         if 'texture' in self.param_changes:
             self.texture_gen = (x for x in self.param_changes['texture'])
             self.update_texture(None)
+        if 'color_a' in self.param_changes:
+            self.color_a_gen = (x for x in self.param_changes['color_a'])
+            self.update_color_a(None)
         
         self.update_pos(None)
 
 
     def update_pos(self,dt):
-        self.pos = (self.pos[0] + self.dx, self.pos[1] + self.dy)
+        self.rect.pos = (self.rect.pos[0] + self.dx, self.rect.pos[1] + self.dy)
         Clock.schedule_once(self.update_pos,self.refresh_time)
 
     def update_width(self,dt):
@@ -64,7 +75,7 @@ class Particle(Rectangle):
             val, time = self.width_gen.next()
         except StopIteration:
             return False
-        self.size = (self.size[0]+val, self.size[1])
+        self.rect.size = (self.rect.size[0]+val, self.rect.size[1])
         Clock.schedule_once(self.update_width,time)
 
     def update_height(self,dt):
@@ -72,7 +83,7 @@ class Particle(Rectangle):
             val, time = self.height_gen.next()
         except StopIteration:
             return False
-        self.size = (self.size[0], self.size[1]+val)
+        self.rect.size = (self.rect.size[0], self.rect.size[1]+val)
         Clock.schedule_once(self.update_height,time)
 
     def update_texture(self,dt):
@@ -80,8 +91,23 @@ class Particle(Rectangle):
             val, time = self.texture_gen.next()
         except StopIteration:
             return False
-        self.texture = val
+        self.rect.texture = val
         Clock.schedule_once(self.update_texture,time)
+
+    def update_color_a(self,dt):
+        try:
+            val, time = self.color_a_gen.next()
+        except StopIteration:
+            return False
+        a = self.color_code[3]+(val/255.)
+        if a < 0: a = 0
+        self.color_code = (self.color_code[0], self.color_code[1], self.color_code[2], a) 
+        index = self.indexof(self.color)
+        self.remove(self.color)
+        newcolor = Color(*self.color_code)
+        print "inserting at index", self.color_code, index
+        self.insert(index, self.color)
+        Clock.schedule_once(self.update_color_a,time)
 
     def kill(self,dt):
         self.dormant = True
@@ -119,7 +145,7 @@ class ParticleGroup(InstructionGroup):
             print "empty"
             pass
         self.counter += 1
-        if self.counter < self.batch_size: 
+        if self.counter <= self.batch_size: 
             Clock.schedule_once(self.emit_particle,self.emit_rate)
 
     def init_particles(self,dt):
@@ -127,7 +153,7 @@ class ParticleGroup(InstructionGroup):
         Clock.schedule_once(self.emit_particle)
 
     def reap_particle(self,pt):
-        self.particles.appendleft(pt)
+        self.particles.append(pt)
         self.remove(pt)
 
     def randomize_params(self,param_dict,scatterdict):
@@ -145,24 +171,25 @@ class ParticleGroup(InstructionGroup):
 
 class ParticleEmitter(Widget):
 
-    def __init__(self, image_basename, image_location, emmitter_type = 'smoke', batches = 3, batch_size = 100,**kwargs):
+    def __init__(self, image_basename, image_location, emmitter_type = 'smoke', batches = 5, batch_size = 40,**kwargs):
         super(ParticleEmitter,self).__init__()
         assert emmitter_type in ['smoke']
 
         if emmitter_type == 'smoke':
             texture_list = self.get_texture_list('VFX-Explosion','VFX/VFX_Set1_64.atlas')
             initial_params = {'velocity_x': 0,
-                'velocity_y': 0,
+                'velocity_y': 200,
                 'texture': texture_list[0],
                 'x': 200,
                 'y': 200,
-                'lifetime': 4.,
+                'lifetime': 1.5,
                 'width': 64,
                 'height': 64,}
-            param_changes = {'texture': zip(texture_list[1:],[0.6]*(len(texture_list)-1)),
+            param_changes = {'texture': zip(texture_list[1:],[0.3]*(len(texture_list)-1)),
                                 'width': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25)],
-                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),]}
-            scatterdict = {'velocity_x': 200, 'velocity_y': 200, 'lifetime': .8}
+                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],
+                                'color_a': [(-50,.05),(-50,.05),(-50,.05),(-50,.05),(-50,.05),]}
+            scatterdict = {'velocity_x': 100, 'velocity_y': 20, 'lifetime': .1}
         
         for b in range(batches):
             self.emit_particle_group(initial_params, param_changes, scatterdict, batch_size)
