@@ -96,7 +96,8 @@ class Particle(Rectangle):
 
 
 class ParticleGroup(InstructionGroup):
-    
+    counter = 0
+
     def __init__(self, initial_params, param_changes = None, scatterdict = None, batch_size = 30, **kwargs):
         super(ParticleGroup,self).__init__()
         self.scatterdict = scatterdict if scatterdict is not None else {}
@@ -117,7 +118,9 @@ class ParticleGroup(InstructionGroup):
         except IndexError:
             print "empty"
             pass
-        Clock.schedule_once(self.emit_particle,self.emit_rate)
+        self.counter += 1
+        if self.counter < self.batch_size: 
+            Clock.schedule_once(self.emit_particle,self.emit_rate)
 
     def init_particles(self,dt):
         self.particles = deque([Particle(self.randomize_params(self.initial_params,self.scatterdict),self.param_changes,parent=self,dormant=True) for d in xrange(self.batch_size)],maxlen=self.batch_size)
@@ -142,7 +145,7 @@ class ParticleGroup(InstructionGroup):
 
 class ParticleEmitter(Widget):
 
-    def __init__(self, image_basename, image_location, emmitter_type = 'smoke', batches = 3, batch_size = 900,**kwargs):
+    def __init__(self, image_basename, image_location, emmitter_type = 'smoke', batches = 3, batch_size = 100,**kwargs):
         super(ParticleEmitter,self).__init__()
         assert emmitter_type in ['smoke']
 
