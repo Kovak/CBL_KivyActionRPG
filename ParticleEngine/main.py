@@ -104,8 +104,7 @@ class Particle(InstructionGroup):
         self.color_code = (self.color_code[0], self.color_code[1], self.color_code[2], a) 
         index = self.indexof(self.color)
         self.remove(self.color)
-        newcolor = Color(*self.color_code)
-        print "inserting at index", self.color_code, index
+        self.color = Color(*self.color_code)
         self.insert(index, self.color)
         Clock.schedule_once(self.update_color_a,time)
 
@@ -188,7 +187,7 @@ class ParticleEmitter(Widget):
             param_changes = {'texture': zip(texture_list[1:],[0.3]*(len(texture_list)-1)),
                                 'width': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25)],
                                 'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],
-                                'color_a': [(-50,.05),(-50,.05),(-50,.05),(-50,.05),(-50,.05),]}
+                                'color_a': [(-50,.2),(-50,.2),(-50,.2),(-50,.2),(-50,.2),]}
             scatterdict = {'velocity_x': 100, 'velocity_y': 20, 'lifetime': .1}
         
         for b in range(batches):
