@@ -129,7 +129,7 @@ class ParticleEmitter(Widget):
 
     def __init__(self, emmitter_type = 'smoke', num_particles = 30, **kwargs):
         super(ParticleEmitter,self).__init__(**kwargs)
-        assert emmitter_type in ['smoke']
+        assert emmitter_type in ['smoke', 'snow']
         self.emmitter_type = emmitter_type
         self.num_particles = num_particles
         self.counter = 0
@@ -146,27 +146,57 @@ class ParticleEmitter(Widget):
                                     'texture': texture_list[0],
                                     'x': self.pos[0],
                                     'y': self.pos[1],
-                                    'lifetime': 1.5,
+                                    'lifetime': 1.0,
                                     'width': 64,
                                     'height': 64,
                                     'color_r': 0.,
                                     'color_g': 0.,
                                     'color_b': 1.,
                                     'color_a': 1.,}
-            self.param_changes = {'texture': zip(texture_list[1:],[0.3]*(len(texture_list)-1)),
+            self.param_changes = {'texture': zip(texture_list[1:],[0.1]*(len(texture_list)-1)),
                                 'width': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25)],
-                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],}
-                                # 'color_a': [(-50,.2),(-50,.2),(-50,.2),(-50,.2),(-50,.2),]}
+                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],
+                                'color_a': [(-30,.2),(-30,.2),(-30,.2),(-30,.2),(-50,.2),]}
             self.scatterdict = {'velocity_x': 100, 
                             'velocity_y': 20, 
                             'lifetime': .1, 
                             'x': 10,
                             'y': 10}
-            self.slate = InstructionGroup()
-            self.canvas.add(self.slate)
+
+        elif self.emmitter_type == 'snow':
+            texture_list = self.get_texture_list('VFX_SnowFlake_','VFX/VFX_Set1.atlas')
+            self.initial_params = {'velocity_x': 0,
+                                    'velocity_y': -75,
+                                    'texture': texture_list[0],
+                                    'x': self.x + self.width/2.,
+                                    'y': self.top,
+                                    'lifetime': 10.0,
+                                    'width': 16,
+                                    'height': 16,
+                                    'color_r': 1.,
+                                    'color_g': 1.,
+                                    'color_b': 1.,
+                                    'color_a': 1.,}
+            self.param_changes = {'texture': zip(texture_list[1:],[2.0]*(len(texture_list)-1)),
+                                'width': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25)],
+                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],}
+                                # 'color_a': [(-50,.2),(-50,.2),(-50,.2),(-50,.2),(-50,.2),]}
+            self.scatterdict = {'velocity_x': 10, 
+                            'velocity_y': 25, 
+                            'lifetime': .33, 
+                            'x': self.width * .5,
+                            'y': 10,
+                            'color_r': 0,
+                            'color_g': 0,
+                            'color_b': 0,
+                            'color_a': .1,}
         
 
+        self.slate = InstructionGroup()
+        self.canvas.add(self.slate)
+
         self.emit_rate = self.initial_params['lifetime']/float(self.num_particles*1.1)
+        if self.emit_rate < 0.02: self.emit_rate = 0.02
         Clock.schedule_once(self.emit_particle)
 
     def emit_particle(self, dt):
@@ -225,8 +255,8 @@ class LowLevelParticleEngineApp(App):
         fl = FloatLayout(pos=(0,0),size=Window.size)
         db_panel = CBL_DebugPanel(pos=(0,0),size=(100,50),size_hint = (None,None))
         fl.add_widget(db_panel)
-        for d in xrange(4):
-            fl.add_widget(ParticleEmitter(emitter_type = 'smoke', num_particles=50, debug=db_panel, pos=(randint(100,Window.width - 100),randint(100,Window.height - 100)),size=(128,128),size_hint=(None,None)))
+        for d in xrange(1):
+            fl.add_widget(ParticleEmitter(emmitter_type = 'snow', num_particles=15, debug=db_panel,size_hint=(1,1)))
         return fl
 
 
