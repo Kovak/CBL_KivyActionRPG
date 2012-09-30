@@ -16,6 +16,17 @@ from collections import deque
 from functools import partial
 import re
 
+def interpret_str(valuestr):
+    if valuestr.startswith("'"):
+        return valuestr.strip("'")
+    elif valuestr.startswith('"'):
+        return valuestr.strip('"')
+    else:
+        try:
+            return float(valuestr)
+        except:
+            return valuestr
+
 class Particle(InstructionGroup):
     refresh_time = .08
     frame = 0
@@ -44,7 +55,7 @@ class Particle(InstructionGroup):
         self.rect.size  = (self.initial_params['width'],self.initial_params['height'])
         self.rect.texture = self.initial_params['texture']
 
-        self.change_color((self.initial_params['color_r'],self.initial_params['color_g'],self.initial_params['color_b'],self.initial_params['color_a']))
+        self.change_color((self.initial_params['color_r']/255.,self.initial_params['color_g']/255.,self.initial_params['color_b']/255.,self.initial_params['color_a']/255.))
 
         self.dormant = False
         self.dx = self.refresh_time * self.initial_params['velocity_x']
@@ -97,10 +108,12 @@ class Particle(InstructionGroup):
         Clock.schedule_once(self.update_texture,time)
 
     def update_color_a(self,dt):
+
         try:
             val, time = self.color_a_gen.next()
         except StopIteration:
             return False
+
         a = self.color_code[3]+(val/255.)
         if a < 0: a = 0
         self.change_color((self.color_code[0], self.color_code[1], self.color_code[2], a))
@@ -114,96 +127,148 @@ class Particle(InstructionGroup):
         self.color = Color(*self.color_code)
         self.insert(index, self.color)
 
-
     def kill(self,dt):
-        # self.dormant = True
-        # Clock.unschedule(self.update_pos)
-        # Clock.unschedule(self.update_width)
-        # Clock.unschedule(self.update_texture)
-        # Clock.unschedule(self.update_height)
-        # Clock.unschedule(self.update_color_a)
         self.parent.reap_particle(self)
 
+class ParticleEffect(Widget):
 
-class ParticleEmitter(Widget):
+    def __init__(self, initial_params, param_changes, scatterdict, num_particles = 30, **kwargs):
+        super(ParticleEffect,self).__init__(**kwargs)
 
-    def __init__(self, emmitter_type = 'smoke', num_particles = 30, **kwargs):
-        super(ParticleEmitter,self).__init__(**kwargs)
-        assert emmitter_type in ['smoke', 'snow']
-        self.emmitter_type = emmitter_type
+        self.initial_params = initial_params
+        self.param_changes = param_changes
+        self.scatterdict = scatterdict
         self.num_particles = num_particles
-        self.counter = 0
-        Clock.schedule_once(self.setup_window)
-        
-        
 
-    def setup_window(self,dt):
-        print self.size
-        if self.emmitter_type == 'smoke':
-            texture_list = self.get_texture_list('VFX-Explosion','VFX/VFX_Set1_64.atlas')
-            self.initial_params = {'velocity_x': 0,
-                                    'velocity_y': 200,
-                                    'texture': texture_list[0],
-                                    'x': self.pos[0],
-                                    'y': self.pos[1],
-                                    'lifetime': 1.0,
-                                    'width': 64,
-                                    'height': 64,
-                                    'color_r': 0.,
-                                    'color_g': 0.,
-                                    'color_b': 1.,
-                                    'color_a': 1.,}
-            self.param_changes = {'texture': zip(texture_list[1:],[0.1]*(len(texture_list)-1)),
-                                'width': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25)],
-                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],
-                                'color_a': [(-30,.2),(-30,.2),(-30,.2),(-30,.2),(-50,.2),]}
-            self.scatterdict = {'velocity_x': 100, 
-                            'velocity_y': 20, 
-                            'lifetime': .1, 
-                            'x': 10,
-                            'y': 10}
-
-        elif self.emmitter_type == 'snow':
-            texture_list = self.get_texture_list('VFX_SnowFlake_','VFX/VFX_Set1.atlas')
-            self.initial_params = {'velocity_x': 0,
-                                    'velocity_y': -75,
-                                    'texture': texture_list[0],
-                                    'x': self.x + self.width/2.,
-                                    'y': self.top,
-                                    'lifetime': 10.0,
-                                    'width': 16,
-                                    'height': 16,
-                                    'color_r': 1.,
-                                    'color_g': 1.,
-                                    'color_b': 1.,
-                                    'color_a': 1.,}
-            self.param_changes = {'texture': zip(texture_list[1:],[2.0]*(len(texture_list)-1)),
-                                'width': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25)],
-                                'height': [(8,.5),(8,.5),(8,.5),(8,.25),(8,.25),(8,.25),(8,.25),],}
-                                # 'color_a': [(-50,.2),(-50,.2),(-50,.2),(-50,.2),(-50,.2),]}
-            self.scatterdict = {'velocity_x': 10, 
-                            'velocity_y': 25, 
-                            'lifetime': .33, 
-                            'x': self.width * .5,
-                            'y': 10,
-                            'color_r': 0,
-                            'color_g': 0,
-                            'color_b': 0,
-                            'color_a': .1,}
-        
+    def start(self):
 
         self.slate = InstructionGroup()
         self.canvas.add(self.slate)
 
-        self.emit_rate = self.initial_params['lifetime']/float(self.num_particles*1.1)
+        self.emit_rate = self.initial_params['lifetime']/float(self.num_particles)
         if self.emit_rate < 0.02: self.emit_rate = 0.02
-        Clock.schedule_once(self.emit_particle)
+
+        self.stop_flag = False
+        self.emit_particle(None)
+
+
+    def stop(self):
+        self.stop_flag = True
 
     def emit_particle(self, dt):
-        self.slate.add(Particle(self.randomize_params(),self.param_changes,parent=self,dormant=False))
-            # p = ParticleGroup(initial_params, param_changes=param_changes, scatterdict=scatterdict, batch_size = batch_size)
-        # self.counter += 1
-        if self.counter < self.num_particles: Clock.schedule_once(self.emit_particle,self.emit_rate)
+        if self.stop_flag: return False
+        self.slate.add(Particle(self.randomize_params(),self.param_changes,parent=self))
+        Clock.schedule_once(self.emit_particle,self.emit_rate)
+
+    def reap_particle(self,particle):
+        self.slate.remove(particle)
+
+    def randomize_params(self):
+        params = self.initial_params.copy()
+        params['x'] = self.x
+        params['y'] = self.y
+        for key in params.keys():
+            try:
+                if key in self.scatterdict:
+                    params[key] = params[key] * uniform(1-self.scatterdict[key],1+self.scatterdict[key]) if self.scatterdict[key] < 1 else params[key] + randint(int(-self.scatterdict[key]),int(self.scatterdict[key]))
+                else:
+                    params[key] *= uniform(0.9,1.1)
+            except:
+                pass
+
+        return params
+
+class CBLParticleEmitter(Widget):
+    
+
+    def __init__(self, cblp_filename, num_particles=30,**kwargs):
+        self.particle_effects = []
+        super(CBLParticleEmitter,self).__init__(**kwargs)
+        self.num_particles = num_particles
+        self.particle_effects = self.parse_cblp(cblp_filename)
+
+
+
+    def start(self,*largs):
+        for p in self.particle_effects:
+            p.num_particles = int(self.num_particles*p.initial_params['frequency'])
+            p.pos = self.pos
+            self.add_widget(p)
+            p.start()
+
+    def on_pos(self,instance,value):
+        for p in self.particle_effects:
+            p.pos = value
+
+    def stop(self,*largs):
+        for p in self.particle_effects:
+            p.stop()
+
+    def parse_cblp(self,cblp_filename):
+        """Parses the text file at cblp_filename and returns a list of ParticleEffect objects. 
+        Needs to be rewritten using proper recursive parsing techniques for extensibility, but functions for now."""
+        
+        # read file into a list for easier processing. list format will be (tablevel, field, value)
+        tab_re = re.compile(r'(\ *)[^\ ]*')
+        arg_re = re.compile(r'\ *([-_a-zA-Z0-9]+):\ *(.*)')
+        cblp_lines = []
+        with open(cblp_filename,'r') as inf:
+            for line in inf:
+                if arg_re.match(line) is None: continue
+
+                line_tablevel = len(tab_re.match(line).group(1))
+                line_field = arg_re.match(line).group(1)
+                line_value = interpret_str(arg_re.match(line).group(2))
+                cblp_lines.append((line_tablevel,line_field,line_value))
+
+
+        particle_effects = []
+        param_args = {}
+        prev_tablevel = 0
+
+        for line in cblp_lines:
+
+            if prev_tablevel == 12 and line[0] < 12:
+                self.set_param(particle_effects[-1],active_param, param_field, args = param_args)
+                param_args = {}
+            # if this is unindented, it's a new variation, so create a new ParticleEffect
+            if line[0] == 0:
+                if 'variation' not in line: continue
+                particle_effects.append(ParticleEffect({},{},{},0))
+            # if it's first level, and there is a value after the colon, it's an initial value, so set it.
+            elif line[0] == 4 and line[2] != '':
+                particle_effects[-1].initial_params[line[1]]=line[2]
+            elif line[0] == 4 and line[2] == '':
+                active_param = line[1]
+            elif line[0] == 8 and line[2] != '':
+                self.set_param(particle_effects[-1],active_param, line[1], value = line[2])
+            elif line[0] == 8 and line[2] == '':
+                param_field = line[1]
+            elif line[0] == 12 and line[2] != '':
+                param_args[line[1]] = line[2]
+            else:
+                # needs to change to raise new ParseError
+                assert True == False
+
+            prev_tablevel = line[0]
+        
+        # get texture_list for all particle effects
+        for p in particle_effects:
+            texture_list = self.get_texture_list(p.initial_params['image_basename'],p.initial_params['atlas'])
+            p.initial_params['texture'] = texture_list[0]
+            if 'frame_rate' in p.initial_params:
+                p.param_changes['texture'] = zip(texture_list[1:], [p.initial_params['frame_rate']]*len(texture_list[1:]))
+        return particle_effects
+
+    def set_param(self,particle_effect, param, field, args=None, value=None):
+        if value is not None:
+            if field in ['average','initial', 'init']:
+                particle_effect.initial_params[param] = value
+            elif field == 'scatter':
+                particle_effect.scatterdict[param] = value
+        elif args is not None: 
+            if field == 'interval_change':
+                particle_effect.param_changes[param] = [(args['amount'],args['rate'])] * int(args['max_iter'])
 
     def get_texture_list(self, image_basename, image_location):
         basename = image_basename
@@ -217,24 +282,6 @@ class ParticleEmitter(Widget):
 
         return [atlas[key] for key in wanted_keys]
 
-    def reap_particle(self,particle):
-        # these lines are only necessary if particle is moving or we want to alter effect. we will want to find a way to not run them in other cases.
-        # particle.initial_params = self.randomize_params()
-        # particle.param_changes = self.param_changes
-        # particle.activate()
-        self.slate.remove(particle)
-
-    def randomize_params(self):
-        params = self.initial_params.copy()
-        for key in params.keys():
-            try:
-                if key in self.scatterdict:
-                    params[key] = params[key] * uniform(1-self.scatterdict[key],1+self.scatterdict[key]) if self.scatterdict[key] < 1 else params[key] + randint(int(-self.scatterdict[key]),int(self.scatterdict[key]))
-                else:
-                    params[key] *= uniform(0.9,1.1)
-            except:
-                pass
-        return params
 
 class CBL_DebugPanel(BoxLayout):
     fps = StringProperty(None)
@@ -249,17 +296,26 @@ class CBL_DebugPanel(BoxLayout):
         Clock.schedule_once(self.update)
 
 
-class LowLevelParticleEngineApp(App):
+class ParticleEngineApp(App):
     def build(self):
         # 'atlas://VFX/smoke_particles/VFX_SmokeParticle'
         fl = FloatLayout(pos=(0,0),size=Window.size)
         db_panel = CBL_DebugPanel(pos=(0,0),size=(100,50),size_hint = (None,None))
         fl.add_widget(db_panel)
-        for d in xrange(1):
-            fl.add_widget(ParticleEmitter(emmitter_type = 'snow', num_particles=15, debug=db_panel,size_hint=(1,1)))
+
+        p = CBLParticleEmitter('smoke.cblp', num_particles = 50, pos = (200,50), size_hint = (None,None), size = (128,128))
+        # this is just to show how you start/stop it
+        Clock.schedule_once(p.start)
+        Clock.schedule_once(p.stop, 8.)
+        fl.add_widget(p)
+
+        q = CBLParticleEmitter('snow.cblp', num_particles = 80, pos = (400,600), size_hint = (None,None), size=(1,1))
+        Clock.schedule_once(q.start)
+        fl.add_widget(q)        
+
         return fl
 
 
 
 if __name__ == '__main__':
-    LowLevelParticleEngineApp().run()
+    ParticleEngineApp().run()

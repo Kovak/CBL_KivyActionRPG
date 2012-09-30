@@ -1,23 +1,5 @@
 #:kivy 1.3.0
 
-<ParticleEmitter>:
-    canvas:
-        Color:
-            rgba: (1,0,0,0)
-        Rectangle:
-            size: self.size
-            pos: self.pos
-
-
-<Particle>:
-    canvas:
-        Color:
-            rgba: self.color
-        Rectangle:
-            texture: self.textures[self.active_frame] if self.textures is not None else None
-            size: self.size
-            pos: self.pos
-
 <CBL_DebugPanel>
     fps: root.fps
     Label:
