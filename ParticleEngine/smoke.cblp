@@ -1,7 +1,7 @@
 variation:
     frequency: 1.
     atlas: 'VFX/VFX_Set1.atlas'
-    image_basename: 'VFX_SmokeParticle'
+    image_basename: 'VFX-0-Smoke-'
     frame_rate: 0.1
     lifetime: 1.
     width: 32
